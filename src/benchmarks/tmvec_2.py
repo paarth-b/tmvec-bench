@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import sys
+import argparse
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -8,33 +8,50 @@ import torch.nn.functional as F
 from huggingface_hub import hf_hub_download
 from tqdm import tqdm
 
-from ..model.tmvec_2_model import TMScorePredictor, TMVecConfig
+from src.model.tmvec_2_model import TMScorePredictor, TMVecConfig
 from lobster.model import LobsterPMLM
 
 
 def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda'):
+    """Generate LOBSTER embeddings for protein sequences using tokenizer approach."""
     print("Generating Lobster-24M embeddings...")
-    # Load model from HuggingFace using the lobster library
     model = LobsterPMLM("asalam91/lobster_24M")
+    tokenizer = model.tokenizer
     model.to(device)
     model.eval()
 
     all_embeddings = []
-    all_lengths = []
+    all_attention_masks = []
 
     with torch.no_grad():
         for i in tqdm(range(0, len(sequences), batch_size)):
             batch_seqs = sequences[i:i + batch_size]
 
-            batch_seqs = [seq[:max_length] for seq in batch_seqs]
-            lengths = [len(seq) for seq in batch_seqs]
-            all_lengths.append(lengths)
+            # Use tokenizer for proper padding and truncation
+            encoded = tokenizer(
+                batch_seqs,
+                padding=True,
+                truncation=True,
+                max_length=max_length,
+                return_tensors='pt'
+            )
 
-            # Get embeddings from last layer using sequences_to_latents method
-            embeddings = model.sequences_to_latents(batch_seqs)[-1]
+            input_ids = encoded['input_ids'].to(device)
+            attention_mask = encoded['attention_mask'].to(device)
+
+            # Get hidden states
+            outputs = model.model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                output_hidden_states=True
+            )
+            embeddings = outputs.hidden_states[-1]
+
             all_embeddings.append(embeddings.cpu())
+            all_attention_masks.append(attention_mask.cpu())
 
-    return all_embeddings, all_lengths
+    print(f"Generated LOBSTER embeddings: {all_embeddings[0].shape}")
+    return all_embeddings, all_attention_masks
 
 
 def load_fasta(fasta_path, max_sequences=None):
@@ -67,7 +84,8 @@ def load_fasta(fasta_path, max_sequences=None):
     return seq_ids, sequences
 
 
-def transform_embeddings(base_embeddings, lengths_per_batch, device):
+def transform_embeddings(base_embeddings, attention_masks, device):
+    """Transform base embeddings into structure-aware embeddings using TMvec-2 model."""
     print("Loading TMvec-2 model from HuggingFace...")
     checkpoint_path = hf_hub_download(
         repo_id="scikit-bio/tmvec-2",
@@ -77,8 +95,11 @@ def transform_embeddings(base_embeddings, lengths_per_batch, device):
 
     state_dict = checkpoint['state_dict']
 
-    # Match the checkpoint architecture: 4 layers, 408 → 1024 → 512 projection
-    config = TMVecConfig(d_model=408, num_layers=4, projection_hidden_dim=1024)
+    config = TMVecConfig(
+        d_model=408,
+        num_layers=4,
+        projection_hidden_dim=1024
+    )
     model = TMScorePredictor(config)
     model.load_state_dict(state_dict)
     model.to(device)
@@ -88,16 +109,15 @@ def transform_embeddings(base_embeddings, lengths_per_batch, device):
     all_embeddings = []
 
     with torch.no_grad():
-        for batch, lengths in tqdm(zip(base_embeddings, lengths_per_batch), desc="TMvec-2 encoding", total=len(base_embeddings)):
-            batch = batch.to(device)
-            batch_size, seq_len = batch.shape[:2]
+        for batch_emb, attn_mask in tqdm(zip(base_embeddings, attention_masks), desc="TMvec-2 encoding", total=len(base_embeddings)):
+            batch_emb = batch_emb.to(device)
+            attn_mask = attn_mask.to(device)
 
-            # Create proper padding mask based on actual sequence lengths
-            padding_mask = torch.ones(batch_size, seq_len, dtype=torch.bool, device=device)
-            for idx, length in enumerate(lengths):
-                padding_mask[idx, :length] = False
+            # Convert attention_mask to padding_mask (attention_mask: 1=real, 0=padding)
+            # padding_mask: True=padding, False=real
+            padding_mask = (attn_mask == 0)
 
-            emb = model.encode_sequence(batch, padding_mask)
+            emb = model.encode_sequence(batch_emb, padding_mask)
             all_embeddings.append(emb.cpu().numpy())
 
     return np.concatenate(all_embeddings, axis=0)
@@ -134,31 +154,48 @@ def save_results(seq_ids, tm_matrix, output_path):
 
 
 def main():
-    is_scope40 = len(sys.argv) > 1 and sys.argv[1] == "scope40"
+    parser = argparse.ArgumentParser(description="TMvec-2 TM-score prediction")
+    parser.add_argument("--dataset", choices=['cath', 'scope40'], default='cath',
+                        help="Dataset to use (cath or scope40)")
+    parser.add_argument("--fasta", default=None, help="FASTA file path (overrides dataset default)")
+    parser.add_argument("--output", default=None, help="Output CSV path (overrides dataset default)")
+    parser.add_argument("--max-sequences", type=int, default=1000, help="Maximum sequences to process")
+    parser.add_argument("--batch-size", type=int, default=16, help="Batch size for embedding generation")
+    parser.add_argument("--device", default=None, help="Device (cuda/cpu, auto-detects if not specified)")
 
-    if is_scope40:
-        fasta = "data/fasta/scope40-1000.fa"
-        output = "results/scope40_tmvec2_similarities.csv"
-        max_seq = 1000
+    args = parser.parse_args()
+
+    # Set dataset-specific defaults
+    if args.dataset == 'scope40':
+        fasta = args.fasta or "data/fasta/scope40-1000.fa"
+        output = args.output or "results/scope40_tmvec2_similarities.csv"
     else:
-        fasta = "data/fasta/cath-domain-seqs-S100-1k.fa"
-        output = "results/tmvec2_similarities.csv"
-        max_seq = 1000
+        fasta = args.fasta or "data/fasta/cath-domain-seqs-S100-1k.fa"
+        output = args.output or "results/tmvec2_similarities.csv"
 
-    batch_size = 16
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
 
+    print("=" * 80)
+    print("TMvec-2 TM-Score Prediction")
+    print(f"Dataset: {args.dataset.upper()}")
     print(f"Device: {device}")
     print(f"FASTA: {fasta}")
     print(f"Output: {output}")
+    print(f"Max sequences: {args.max_sequences}")
+    print(f"Batch size: {args.batch_size}")
+    print("=" * 80)
 
-    seq_ids, sequences = load_fasta(fasta, max_seq)
-    base_embeddings, lengths_per_batch = generate_embeddings(sequences, batch_size, device=device)
-    tmvec_embeddings = transform_embeddings(base_embeddings, lengths_per_batch, device)
+    seq_ids, sequences = load_fasta(fasta, args.max_sequences)
+    base_embeddings, attention_masks = generate_embeddings(sequences, args.batch_size, device=device)
+    tmvec_embeddings = transform_embeddings(base_embeddings, attention_masks, device)
     tm_matrix = calculate_scores(tmvec_embeddings)
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     save_results(seq_ids, tm_matrix, output)
+
+    print("=" * 80)
+    print("Complete!")
+    print("=" * 80)
 
 
 if __name__ == "__main__":

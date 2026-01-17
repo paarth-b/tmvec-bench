@@ -1,3 +1,5 @@
+"""TM-Vec model: Trainable Transformer encoder for TM-score prediction."""
+
 from typing import Dict, Optional, Tuple
 
 import lightning.pytorch as pl
@@ -9,6 +11,8 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts, LinearLR, Sequ
 
 
 class TMVecConfig:
+    """Configuration for TM-Vec model."""
+
     def __init__(
         self,
         # Architecture
@@ -64,6 +68,12 @@ class TMVecConfig:
 
 
 class TMScorePredictor(pl.LightningModule):
+    """
+    TM-Vec: Predicts TM-scores from protein embedding pairs.
+
+    Architecture:
+        Embeddings → Transformer → Pool → MLP → Cosine Similarity → TM-score
+    """
 
     def __init__(self, config: Optional[TMVecConfig] = None, **kwargs):
         super().__init__()
@@ -72,6 +82,7 @@ class TMScorePredictor(pl.LightningModule):
         self.config = config if config else TMVecConfig(**kwargs)
         self.save_hyperparameters(vars(self.config))
 
+        # Transformer encoder
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=self.config.d_model,
             nhead=self.config.nhead,
@@ -81,10 +92,9 @@ class TMScorePredictor(pl.LightningModule):
             batch_first=True,
             norm_first=False,
         )
-        # Enable Flash Attention by disabling nested tensors
-        encoder_layer.enable_nested_tensor = False
-        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=self.config.num_layers, enable_nested_tensor=False)
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=self.config.num_layers)
 
+        # Projection head
         self.dropout = nn.Dropout(self.config.dropout)
         self.projection = nn.Sequential(
             nn.Linear(self.config.d_model, self.config.projection_hidden_dim),
@@ -100,19 +110,6 @@ class TMScorePredictor(pl.LightningModule):
         self._init_weights()
         self._print_architecture()
 
-    def load_state_dict(self, state_dict, strict=True):
-        """
-        Strip torch.compile _orig_mod prefix from checkpoint keys if present.
-
-        Old compiled checkpoints have keys like "encoder._orig_mod.layers.0.weight".
-        This strips the prefix to match non-compiled models.
-        """
-        # Strip _orig_mod prefix if present
-        if any('._orig_mod.' in k for k in state_dict.keys()):
-            state_dict = {k.replace('._orig_mod', ''): v for k, v in state_dict.items()}
-
-        return super().load_state_dict(state_dict, strict=strict)
-
     def _init_weights(self):
         """Xavier uniform initialization for projection head."""
         for module in self.projection.modules():
@@ -122,21 +119,27 @@ class TMScorePredictor(pl.LightningModule):
                     nn.init.zeros_(module.bias)
 
     def _print_architecture(self):
+        """Print model summary."""
         enc_params = sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)
         proj_params = sum(p.numel() for p in self.projection.parameters() if p.requires_grad)
 
-        # Check if Flash Attention is available
-        flash_available = torch.cuda.is_available() and hasattr(torch.nn.functional, 'scaled_dot_product_attention')
-        flash_status = "✓ enabled" if flash_available else "✗ not available"
-
-        print("TM-Vec Model Architecture:")
+        print(f"✓ TM-Vec Model Architecture:")
         print(f"    Transformer: {self.config.num_layers} layers × {self.config.d_model}d × {self.config.nhead} heads")
-        print(f"    Flash Attention: {flash_status}")
         print(f"    Projection: {self.config.d_model} → {self.config.projection_hidden_dim} → {self.config.out_dim}")
         print(f"    Parameters: {enc_params:,} (encoder) + {proj_params:,} (projection) = {enc_params+proj_params:,} total")
 
     def encode_sequence(self, embeddings: torch.Tensor, padding_mask: torch.Tensor) -> torch.Tensor:
+        """
+        Encode sequence: Transformer → Mean Pool → Project.
 
+        Args:
+            embeddings: [B, L, D]
+            padding_mask: [B, L] True=padding
+
+        Returns:
+            [B, out_dim]
+        """
+        # Transformer
         hidden = self.encoder(embeddings, src_key_padding_mask=padding_mask)
 
         # Mean pooling (ignore padding)
@@ -144,6 +147,7 @@ class TMScorePredictor(pl.LightningModule):
         mask_expanded = (~padding_mask).unsqueeze(-1).float()
         pooled = (hidden * mask_expanded).sum(dim=1) / lengths
 
+        # Project
         pooled = self.dropout(pooled)
         output = self.projection(pooled)
 
@@ -156,7 +160,12 @@ class TMScorePredictor(pl.LightningModule):
         seq1_padding_mask: torch.Tensor,
         seq2_padding_mask: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Forward pass.
 
+        Returns:
+            (emb1, emb2, cosine_similarity)
+        """
         emb1 = self.encode_sequence(seq1_embeddings, seq1_padding_mask)
         emb2 = self.encode_sequence(seq2_embeddings, seq2_padding_mask)
         cos_sim = self.cos_sim(emb1, emb2)
@@ -225,7 +234,6 @@ class TMScorePredictor(pl.LightningModule):
 
     def configure_optimizers(self):
         """AdamW with linear warmup + cosine annealing with warm restarts."""
-        # Use fused AdamW for 10-20% speedup
         optimizer = AdamW(
             self.parameters(),
             lr=self.config.lr,
@@ -234,7 +242,7 @@ class TMScorePredictor(pl.LightningModule):
             eps=self.config.eps
         )
 
-        # Warmup: linear increase from 0.01*lr to lr
+        # Warmup: linear increase from 0.01×lr to lr
         warmup = LinearLR(
             optimizer,
             start_factor=0.01,
@@ -250,6 +258,7 @@ class TMScorePredictor(pl.LightningModule):
             eta_min=self.config.lr * self.config.eta_min_factor
         )
 
+        # Combine: warmup → cosine restarts
         scheduler = SequentialLR(
             optimizer,
             schedulers=[warmup, cosine],

@@ -8,6 +8,8 @@ dependencies = [
     "biopython",
     "huggingface-hub",
     "lightning",
+    "lbster @ git+https://github.com/prescient-design/lobster.git",
+    "loguru",
     "matplotlib",
     "pandas",
     "protobuf",
@@ -16,8 +18,9 @@ dependencies = [
     "scipy",
     "seaborn",
     "sentencepiece",
+    "tmtools>=0.3.0",
     "torch",
     "tqdm",
     "transformers>=4.40.0",
-    "wandb"
+    "wandb",
 ]

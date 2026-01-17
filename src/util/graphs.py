@@ -34,6 +34,8 @@ def plot_density_scatter(df, pred_col, truth_col, method_name, output_path=None)
         title = 'SCOPe40 Alignment Results (Foldseek)'
     elif 'tmvec-1' in method_name.lower():
         title = 'SCOPe40 Alignment Results (TMvec-1)'
+    elif 'tmvec-2' in method_name.lower():
+        title = 'SCOPe40 Alignment Results (TMvec-2)'
     elif 'student' in method_name.lower():
         title = 'SCOPe40 Alignment Results (TMvec-Student)'
     else:
@@ -83,24 +85,24 @@ def main():
     # Auto-detect method file and display name
     method_config = {
         'foldseek': {
-            'file': 'results/scope40_foldseek_similarities.parquet',
+            'file': 'results/scope40_foldseek_similarities.csv',
             'name': 'Foldseek',
-            'tmalign_default': 'results/scope40_tmalign_similarities.parquet'
+            'tmalign_default': 'results/scope40_tmalign_similarities.csv'
         },
         'tmvec1': {
-            'file': 'results/scope40_tmvec1_similarities.parquet',
+            'file': 'results/scope40_tmvec1_similarities.csv',
             'name': 'TMvec-1',
-            'tmalign_default': 'results/scope40_tmalign_similarities.parquet'
+            'tmalign_default': 'results/scope40_tmalign_similarities.csv'
         },
         'tmvec2': {
-            'file': 'results/tmvec2_similarities.parquet',
+            'file': 'results/scope40_tmvec2_similarities.csv',
             'name': 'TMvec-2',
-            'tmalign_default': 'results/tmalign_similarities.parquet'
+            'tmalign_default': 'results/scope40_tmalign_similarities.csv'
         },
         'student': {
-            'file': 'results/scope40_tmvec_student_similarities.parquet',
+            'file': 'results/scope40_tmvec_student_similarities.csv',
             'name': 'TMvec-Student',
-            'tmalign_default': 'results/scope40_tmalign_similarities.parquet'
+            'tmalign_default': 'results/scope40_tmalign_similarities.csv'
         }
     }
 
@@ -108,12 +110,18 @@ def main():
     method_file = args.method_file or config['file']
     tmalign_file = args.tmalign if args.tmalign != 'results/tmalign_similarities.parquet' else config['tmalign_default']
 
-    # Load data
-    df_tmalign = pq.read_table(tmalign_file).to_pandas()
+    # Load data - support both CSV and parquet
+    def load_file(filepath):
+        if filepath.endswith('.parquet'):
+            return pq.read_table(filepath).to_pandas()
+        else:
+            return pd.read_csv(filepath)
+
+    df_tmalign = load_file(tmalign_file)
     if 'tm_score' in df_tmalign.columns:
         df_tmalign['tm_score'] = pd.to_numeric(df_tmalign['tm_score'], errors='coerce')
 
-    df_method = pq.read_table(method_file).to_pandas()
+    df_method = load_file(method_file)
     if args.max_pairs is not None:
         df_method = df_method.head(args.max_pairs)
     if 'tm_score' in df_method.columns:
