@@ -13,6 +13,8 @@
 #SBATCH --mail-user="%u@asu.edu"    # CUSTOMIZE: your email
 #SBATCH --export=NONE               # Purge the job-submitting shell environment
 
+set -e
+
 # Get the repository root directory (parent of scripts directory)
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -65,3 +67,5 @@ echo "=========================================="
 echo ""
 echo "Results:"
 echo "  ${OUTPUT_FILE}"
+
+python src/util/graphs.py student

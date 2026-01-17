@@ -12,6 +12,8 @@
 #SBATCH --error=logs/%j/%x.err
 #SBATCH --exclusive
 
+set -e
+
 echo "Job ID: $SLURM_JOB_ID"
 echo "Node: $SLURMD_NODENAME"
 echo "CPUs: $SLURM_CPUS_PER_TASK"
@@ -60,3 +62,5 @@ else
     echo "Results:"
     echo "  results/tmvec2_similarities.csv"
 fi
+
+python src/util/graphs.py tmvec2
