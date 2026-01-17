@@ -1,10 +1,12 @@
 #!/usr/bin/env python
-"""TM-Vec Student: TM-score predictions for CATH and SCOPe."""
+"""TM-Vec Student: TM-score predictions for CATH and SCOPe using cosine similarity."""
 
 import sys
 from pathlib import Path
 import torch
+import torch.nn.functional as F
 import pandas as pd
+import numpy as np
 from tqdm import tqdm
 
 from src.model.student_model import StudentModel, encode_sequence
@@ -68,80 +70,50 @@ def compute_embeddings(model, sequences, max_length, batch_size, device):
     return torch.cat(embeddings, dim=0)
 
 
-def predict_scores(model, embeddings, seq_ids, output_path, batch_size, device):
-    """Compute pairwise TM-scores using batched operations."""
-    n = len(seq_ids)
-    total_pairs = n * (n - 1) // 2
+def calculate_scores(embeddings):
+    """Calculate pairwise TM-scores via cosine similarity.
+    
+    This follows the same approach as TMvec-2: normalize embeddings and
+    compute cosine similarity as the TM-score prediction.
+    """
+    print("Calculating pairwise cosine similarities...")
+    
+    # Normalize embeddings (L2 normalization)
+    embeddings_norm = F.normalize(embeddings, p=2, dim=1)
+    
+    # Compute pairwise cosine similarity matrix
+    # This is equivalent to normalized dot product
+    tm_matrix = torch.mm(embeddings_norm, embeddings_norm.t()).cpu().numpy()
+    
+    print(f"Cosine similarity stats - Mean: {tm_matrix.mean():.4f}, Std: {tm_matrix.std():.4f}")
+    
+    return tm_matrix
 
-    print(f"Scoring {total_pairs:,} pairs...")
 
-    predictor = model.tm_predictor.to(device)
-    embeddings = embeddings.to(device)
-
+def save_results(seq_ids, tm_matrix, output_path):
+    """Save pairwise scores to CSV."""
+    print(f"Saving to {output_path}...")
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    seq1_ids = []
+    seq2_ids = []
+    tm_scores = []
 
-    # Collect all results in memory
-    all_seq1_ids = []
-    all_seq2_ids = []
-    all_scores = []
+    # Only save upper triangle (i < j) to match other methods
+    n = len(seq_ids)
+    for i in range(n):
+        for j in range(i + 1, n):
+            seq1_ids.append(seq_ids[i])
+            seq2_ids.append(seq_ids[j])
+            tm_scores.append(float(tm_matrix[i, j]))
 
-    with torch.no_grad():
-        with tqdm(total=total_pairs, desc="Predicting") as pbar:
-            for i in range(n - 1):
-                emb_i = embeddings[i:i + 1]
-                emb_j = embeddings[i + 1:]
-
-                # Process in chunks to manage memory
-                for start in range(0, len(emb_j), batch_size):
-                    end = min(len(emb_j), start + batch_size)
-                    batch = emb_j[start:end]
-                    batch_count = len(batch)
-
-                    # Create pairwise features in both directions
-                    emb_i_expanded = emb_i.expand(batch_count, -1)
-
-                    # Direction 1: [emb_i, emb_j, emb_i * emb_j, |emb_i - emb_j|]
-                    features_ij = torch.cat([
-                        emb_i_expanded,
-                        batch,
-                        emb_i_expanded * batch,
-                        torch.abs(emb_i_expanded - batch)
-                    ], dim=1)
-
-                    # Direction 2: [emb_j, emb_i, emb_j * emb_i, |emb_j - emb_i|]
-                    features_ji = torch.cat([
-                        batch,
-                        emb_i_expanded,
-                        batch * emb_i_expanded,
-                        torch.abs(batch - emb_i_expanded)
-                    ], dim=1)
-
-                    # Predict TM-scores in both directions and average
-                    scores_ij = predictor(features_ij).squeeze(-1)
-                    scores_ji = predictor(features_ji).squeeze(-1)
-                    scores = ((scores_ij + scores_ji) / 2).cpu()
-
-                    if batch_count == 1:
-                        scores = [scores]
-
-                    # Collect results
-                    for k, score in enumerate(scores):
-                        j = i + 1 + start + k
-                        all_seq1_ids.append(seq_ids[i])
-                        all_seq2_ids.append(seq_ids[j])
-                        all_scores.append(float(score))
-
-                    pbar.update(batch_count)
-
-    # Write to CSV
     df = pd.DataFrame({
-        'seq1_id': all_seq1_ids,
-        'seq2_id': all_seq2_ids,
-        'tm_score': all_scores
+        'seq1_id': seq1_ids,
+        'seq2_id': seq2_ids,
+        'tm_score': tm_scores
     })
     df.to_csv(output_path, index=False)
-
-    print(f"Saved to {output_path}")
+    print(f"Saved {len(tm_scores):,} scores")
 
 
 def main():
@@ -156,20 +128,21 @@ def main():
         output = "results/tmvec_student_similarities.csv"
         max_seq = 1000
 
-    checkpoint = "binaries/tmvec_student.pt"
+    checkpoint = "binaries/cosine_tmvec2_student.pt"
     max_length = 600
-    embed_batch = 128
-    pred_batch = 4096
+    batch_size = 128
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print(f"Device: {device}")
     print(f"FASTA: {fasta}")
+    print(f"Checkpoint: {checkpoint}")
     print(f"Output: {output}")
 
     seq_ids, sequences = load_fasta(fasta, max_seq)
     model = load_model(checkpoint, device)
-    embeddings = compute_embeddings(model, sequences, max_length, embed_batch, device)
-    predict_scores(model, embeddings, seq_ids, Path(output), pred_batch, device)
+    embeddings = compute_embeddings(model, sequences, max_length, batch_size, device)
+    tm_matrix = calculate_scores(embeddings)
+    save_results(seq_ids, tm_matrix, Path(output))
 
 
 if __name__ == "__main__":
