@@ -14,7 +14,8 @@ from lobster.model import LobsterPMLM
 
 def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda'):
     print("Generating Lobster-24M embeddings...")
-    model = LobsterPMLM.from_pretrained("asalam91/lobster_24M")
+    # Load model from HuggingFace using the lobster library
+    model = LobsterPMLM("asalam91/lobster_24M")
     model.to(device)
     model.eval()
 
@@ -29,7 +30,8 @@ def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda')
             lengths = [len(seq) for seq in batch_seqs]
             all_lengths.append(lengths)
 
-            embeddings = model.get_embeddings(batch_seqs, mean_embedding=False)
+            # Get embeddings from last layer using sequences_to_latents method
+            embeddings = model.sequences_to_latents(batch_seqs)[-1]
             all_embeddings.append(embeddings.cpu())
 
     return all_embeddings, all_lengths
@@ -75,7 +77,8 @@ def transform_embeddings(base_embeddings, lengths_per_batch, device):
 
     state_dict = checkpoint['state_dict']
 
-    config = TMVecConfig(d_model=408)
+    # Match the checkpoint architecture: 4 layers, 408 → 1024 → 512 projection
+    config = TMVecConfig(d_model=408, num_layers=4, projection_hidden_dim=1024)
     model = TMScorePredictor(config)
     model.load_state_dict(state_dict)
     model.to(device)
