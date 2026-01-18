@@ -120,9 +120,9 @@ def main():
     is_scope40 = len(sys.argv) > 1 and sys.argv[1] == "scope40"
 
     if is_scope40:
-        fasta = "data/fasta/scope40-2500.fa"
+        fasta = "data/fasta/scope40-1000.fa"
         output = "results/scope40_tmvec2_student_similarities.csv"
-        max_seq = 2500
+        max_seq = 1000
     else:
         fasta = "data/fasta/cath-domain-seqs-S100-1k.fa"
         output = "results/tmvec2_student_similarities.csv"
