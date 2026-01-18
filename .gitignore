@@ -20,3 +20,4 @@ scopbenchmark/
 /logs
 /binaries/foldseek
 /binaries/tm_vec_cath_model.ckpt
+cath-domain-seqs.fa

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=foldseek-bench
+#SBATCH --job-name=tm2-student-bench
 #SBATCH --partition=ghx4
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -14,67 +14,55 @@
 
 set -e
 
-mkdir -p logs/$SLURM_JOB_ID
+# Get the repository root directory (parent of scripts directory)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
 
-echo "Job ID: $SLURM_JOB_ID"
-echo "Node: $SLURMD_NODENAME"
 echo "CPUs: $SLURM_CPUS_PER_TASK"
+echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
 echo "Start: $(date)"
 echo ""
 
+# Set hydra's verbosity to full error
+export HYDRA_FULL_ERROR=1
+
 # CUSTOMIZE TO YOUR MACHINE: Load required software and activate environment
-# module load mamba/latest            # Replace with your module system
-# source activate tmvec_distill       # Replace with your environment name
 # module load python/miniforge3_pytorch/2.7.0
 
-DATASET=${1:-cath}
-FOLDSEEK_BIN=binaries/foldseek
+FASTA_FILE="$REPO_ROOT/data/fasta/scope40-1000.fa"
+OUTPUT_FILE="$REPO_ROOT/results/scope40_foldseek_similarities.csv"
+echo "=========================================="
+echo "Running Foldseek predictions on SCOPe40-1000..."
+echo ""
+echo "Model: Foldseek binaries/foldseek"
+echo "FASTA: ${FASTA_FILE} (1000 sequences)"
+echo "Output: ${OUTPUT_FILE}"
+echo ""
+python -m src.benchmarks.foldseek scope40
+echo ""
+echo "=========================================="
 
-# Local default
-THREADS=${SLURM_CPUS_PER_TASK:-8}
+FASTA_FILE="$REPO_ROOT/data/fasta/cath-domain-seqs-S100-1k.fa"
+OUTPUT_FILE="$REPO_ROOT/results/foldseek_similarities.csv"
+echo "=========================================="
+echo "Running Foldseek predictions on CATH S100..."
+echo ""
+echo "Model: Foldseek binaries/foldseek"
+echo "FASTA: ${FASTA_FILE} (1000 sequences)"
+echo "Output: ${OUTPUT_FILE}"
+echo ""
+python -m src.benchmarks.foldseek
+echo "=========================================="
 
-if [ "$DATASET" = "scope40" ]; then
-    STRUCTURE_DIR=data/scope40pdb
-    OUTPUT_FILE=results/scope40_foldseek_similarities.parquet
-    echo "Foldseek binary: $FOLDSEEK_BIN"
-    echo "Structure dir: $STRUCTURE_DIR"
-    echo "Output: $OUTPUT_FILE"
-    echo ""
-    echo "Running Foldseek benchmark on SCOPe40-2500..."
-    echo ""
-    python -m src.benchmarks.foldseek_benchmark \
-        --structure-dir "$STRUCTURE_DIR" \
-        --foldseek-bin "$FOLDSEEK_BIN" \
-        --output "$OUTPUT_FILE" \
-        --threads "$THREADS"
-    echo ""
-    echo "=========================================="
-    echo "Foldseek Benchmark Complete!"
-    echo "End: $(date)"
-    echo "=========================================="
-    echo ""
-    echo "Results:"
-    echo "  results/scope40_foldseek_similarities.parquet"
-else
-    STRUCTURE_DIR=data/pdb/cath-s100
-    OUTPUT_FILE=results/foldseek_similarities.csv
-    echo "Foldseek binary: $FOLDSEEK_BIN"
-    echo "Structure dir: $STRUCTURE_DIR"
-    echo "Output: $OUTPUT_FILE"
-    echo ""
-    echo "Running Foldseek benchmark on CATH S100-1k..."
-    echo ""
-    python -m src.benchmarks.foldseek_benchmark \
-        --structure-dir "$STRUCTURE_DIR" \
-        --foldseek-bin "$FOLDSEEK_BIN" \
-        --output "$OUTPUT_FILE" \
-        --threads "$THREADS"
-    echo ""
-    echo "=========================================="
-    echo "Foldseek Benchmark Complete!"
-    echo "End: $(date)"
-    echo "=========================================="
-    echo ""
-    echo "Results:"
-    echo "  results/foldseek_similarities.csv"
-fi
+echo ""
+echo "=========================================="
+echo "Generating density scatter plots for Foldseek..."
+echo "=========================================="
+python src/util/graphs.py foldseek
+echo "=========================================="
+
+echo ""
+echo "=========================================="
+echo "Running Foldseek Model Time Benchmark..."
+echo "=========================================="
+python -m src.time_benchmarks.foldseek_time_benchmark

@@ -72,7 +72,7 @@ def plot_density_scatter(df, pred_col, truth_col, method_name, output_path=None)
 
 def main():
     parser = argparse.ArgumentParser(description='Generate density scatter plots for method comparison')
-    parser.add_argument('method', choices=['foldseek', 'tmvec1', 'tmvec2', 'student'],
+    parser.add_argument('method', choices=['foldseek', 'tmvec1', 'tmvec2', 'tmvec2_student'],
                         help='Method to compare against TM-align')
     parser.add_argument('--tmalign', default='results/tmalign_similarities.parquet',
                         help='Path to TM-align results')
@@ -99,9 +99,9 @@ def main():
             'name': 'TMvec-2',
             'tmalign_default': 'results/scope40_tmalign_similarities.csv'
         },
-        'student': {
-            'file': 'results/scope40_tmvec_student_similarities.csv',
-            'name': 'TMvec-Student',
+        'tmvec2_student': {
+            'file': 'results/scope40_tmvec2_student_similarities.csv',
+            'name': 'TMvec-2 Student',
             'tmalign_default': 'results/scope40_tmalign_similarities.csv'
         }
     }

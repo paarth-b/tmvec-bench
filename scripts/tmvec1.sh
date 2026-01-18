@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=tm1-bench
+#SBATCH --job-name=tm2-student-bench
 #SBATCH --partition=ghx4
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -12,51 +12,57 @@
 #SBATCH --error=logs/%j/%x.err
 #SBATCH --exclusive
 
-echo "Job ID: $SLURM_JOB_ID"
-echo "Node: $SLURMD_NODENAME"
+set -e
+
+# Get the repository root directory (parent of scripts directory)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
 echo "CPUs: $SLURM_CPUS_PER_TASK"
 echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
 echo "Start: $(date)"
 echo ""
 
-# Customize to your machine: Load override module from deltaAI
+# Set hydra's verbosity to full error
+export HYDRA_FULL_ERROR=1
+
+# CUSTOMIZE TO YOUR MACHINE: Load required software and activate environment
 # module load python/miniforge3_pytorch/2.7.0
 
-# Configure PYTHONPATH
-export PYTHONPATH="$(pwd):${PYTHONPATH:-}"
+FASTA_FILE="$REPO_ROOT/data/fasta/scope40-1000.fa"
+OUTPUT_FILE="$REPO_ROOT/results/scope40_tmvec1_similarities.csv"
+echo "=========================================="
+echo "Running TM-Vec 1 predictions on SCOPe40-1000..."
+echo ""
+echo "Model: TM-Vec 1 binaries/tm_vec_cath_model.ckpt"
+echo "FASTA: ${FASTA_FILE} (1000 sequences)"
+echo "Output: ${OUTPUT_FILE}"
+echo ""
+python -m src.benchmarks.tmvec1 scope40
+echo ""
+echo "=========================================="
 
-DATASET=${1:-cath}
+FASTA_FILE="$REPO_ROOT/data/fasta/cath-domain-seqs-S100-1k.fa"
+OUTPUT_FILE="$REPO_ROOT/results/tmvec1_similarities.csv"
+echo "=========================================="
+echo "Running TM-Vec 1 predictions on CATH S100..."
+echo ""
+echo "Model: TM-Vec 1 binaries/tm_vec_cath_model.ckpt"
+echo "FASTA: ${FASTA_FILE} (1000 sequences)"
+echo "Output: ${OUTPUT_FILE}"
+echo ""
+python -m src.benchmarks.tmvec1
+echo "=========================================="
 
-if [ "$DATASET" = "scope40" ]; then
-    echo "Model: TM-Vec tm_vec_cath.ckpt"
-    echo "FASTA: data/fasta/scope40-2500.fa (2500 sequences)"
-    echo "Output: results/scope40_tmvec1_similarities.csv"
-    echo ""
-    echo "Running TM-Vec 1 predictions on SCOPe40-2500..."
-    echo ""
-    python -m src.benchmarks.tmvec_1 scope40
-    echo ""
-    echo "=========================================="
-    echo "TM-Vec 1 Predictions Complete!"
-    echo "End: $(date)"
-    echo "=========================================="
-    echo ""
-    echo "Results:"
-    echo "  results/scope40_tmvec1_similarities.csv"
-else
-    echo "Model: TM-Vec tm_vec_cath.ckpt"
-    echo "FASTA: data/fasta/cath-domain-seqs-S100-1k.fa (1000 sequences)"
-    echo "Output: results/tmvec1_similarities.csv"
-    echo ""
-    echo "Running TM-Vec 1 predictions on CATH S100..."
-    echo ""
-    python -m src.benchmarks.tmvec_1
-    echo ""
-    echo "=========================================="
-    echo "TM-Vec 1 Predictions Complete!"
-    echo "End: $(date)"
-    echo "=========================================="
-    echo ""
-    echo "Results:"
-    echo "  results/tmvec1_similarities.csv"
-fi
+echo ""
+echo "=========================================="
+echo "Generating density scatter plots for TM-Vec 1..."
+echo "=========================================="
+python src/util/graphs.py tmvec1
+echo "=========================================="
+
+echo ""
+echo "=========================================="
+echo "Running TM-Vec 1 Model Time Benchmark..."
+echo "=========================================="
+python -m src.time_benchmarks.tmvec1_time_benchmark
