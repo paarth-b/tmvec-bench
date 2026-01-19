@@ -42,10 +42,10 @@ python -m src.benchmarks.tmvec2_student scope40
 echo ""
 echo "=========================================="
 
-FASTA_FILE="$REPO_ROOT/data/fasta/cath-domain-seqs-S100-1k.fa"
-OUTPUT_FILE="$REPO_ROOT/results/tmvec2_student_similarities.csv"
+FASTA_FILE="$REPO_ROOT/data/cath-top1k.fa"
+OUTPUT_FILE="$REPO_ROOT/results/cath_tmvec2_student_similarities.csv"
 echo "=========================================="
-echo "Running TM-Vec 2 Student predictions on CATH S100..."
+echo "Running TM-Vec 2 Student predictions on CATH ..."
 echo ""
 echo "Model: TM-Vec 2 Student binaries/tmvec2_student.pt"
 echo "FASTA: ${FASTA_FILE} (1000 sequences)"

@@ -43,10 +43,10 @@ python -m src.benchmarks.tmvec1 scope40
 echo ""
 echo "=========================================="
 
-FASTA_FILE="$REPO_ROOT/data/fasta/cath-domain-seqs-S100-1k.fa"
-OUTPUT_FILE="$REPO_ROOT/results/tmvec1_similarities.csv"
+FASTA_FILE="$REPO_ROOT/data/cath-top1k.fa"
+OUTPUT_FILE="$REPO_ROOT/results/cath_tmvec1_similarities.csv"
 echo "=========================================="
-echo "Running TM-Vec 1 predictions on CATH S100..."
+echo "Running TM-Vec 1 predictions on CATH ..."
 echo ""
 echo "Model: TM-Vec 1 binaries/tm_vec_cath_model.ckpt"
 echo "FASTA: ${FASTA_FILE} (1000 sequences)"

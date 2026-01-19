@@ -7,16 +7,23 @@ from pathlib import Path
 import subprocess
 import pandas as pd
 import tempfile
-import shutil
-import argparse
-from tqdm import tqdm
+import sys
+import os
 
 
 def get_pdb_files(structure_dir):
-    """Get all PDB files from structure directory."""
-    pdb_files = [f for f in Path(structure_dir).iterdir() if f.is_file()]
+    """Get all PDB files from structure directory efficiently using os.scandir."""
+    pdb_files = []
+    structure_path = Path(structure_dir)
+    
+    # Use os.scandir for better performance on large directories
+    with os.scandir(structure_path) as entries:
+        for entry in entries:
+            if entry.is_file() and (entry.name.endswith('.pdb') or entry.name.endswith('.cif')):
+                pdb_files.append(Path(entry.path))
+    
     pdb_files.sort()
-    print(f"Found {len(pdb_files)} PDB files")
+    print(f"Found {len(pdb_files)} structure files")
     return pdb_files
 
 
@@ -56,39 +63,53 @@ def run_foldseek(structure_dir, foldseek_bin, threads):
 
 
 def parse_results(df):
-    """Extract unique pairwise comparisons and average bidirectional scores."""
+    """
+    Extract unique pairwise comparisons and average bidirectional scores.
+    
+    Uses vectorized pandas operations instead of iterrows for massive speedup
+    on large result sets (100-1000x faster for millions of rows).
+    """
     print("Parsing results...")
-
-    # Collect scores for both directions
-    scores_dict = {}
-
-    for _, row in tqdm(df.iterrows(), total=len(df)):
-        q_id = Path(row['query']).stem
-        t_id = Path(row['target']).stem
-
-        # Remove _MODEL_* suffix if present
-        q_id = q_id.split('_MODEL_')[0] if '_MODEL_' in q_id else q_id
-        t_id = t_id.split('_MODEL_')[0] if '_MODEL_' in t_id else t_id
-
-        if q_id != t_id:
-            pair_key = tuple(sorted([q_id, t_id]))
-            if pair_key not in scores_dict:
-                scores_dict[pair_key] = {'scores': [], 'evalues': []}
-            scores_dict[pair_key]['scores'].append(row['alntmscore'])
-            scores_dict[pair_key]['evalues'].append(row['evalue'])
-
-    # Average bidirectional scores
-    pairs = []
-    for pair_key, data in scores_dict.items():
-        pairs.append({
-            'seq1_id': pair_key[0],
-            'seq2_id': pair_key[1],
-            'tm_score': sum(data['scores']) / len(data['scores']),
-            'evalue': min(data['evalues'])  # Use minimum e-value
-        })
-
-    print(f"Extracted {len(pairs)} unique pairs")
-    return pairs
+    
+    # Vectorized extraction of IDs from file paths
+    # Much faster than applying Path().stem row by row
+    df = df.copy()
+    df['q_id'] = df['query'].str.extract(r'/([^/]+)\.[^.]+$')[0]
+    df['t_id'] = df['target'].str.extract(r'/([^/]+)\.[^.]+$')[0]
+    
+    # Handle case where extraction failed (simple filenames without path)
+    mask_q = df['q_id'].isna()
+    mask_t = df['t_id'].isna()
+    if mask_q.any():
+        df.loc[mask_q, 'q_id'] = df.loc[mask_q, 'query'].str.replace(r'\.[^.]+$', '', regex=True)
+    if mask_t.any():
+        df.loc[mask_t, 't_id'] = df.loc[mask_t, 'target'].str.replace(r'\.[^.]+$', '', regex=True)
+    
+    # Remove _MODEL_* suffix if present (vectorized)
+    df['q_id'] = df['q_id'].str.split('_MODEL_').str[0]
+    df['t_id'] = df['t_id'].str.split('_MODEL_').str[0]
+    
+    # Filter out self-comparisons
+    df = df[df['q_id'] != df['t_id']]
+    
+    print(f"Processing {len(df):,} non-self alignments...")
+    
+    # Create canonical pair keys (sorted alphabetically)
+    # This ensures (A,B) and (B,A) map to the same key
+    df['seq1_id'] = df[['q_id', 't_id']].min(axis=1)
+    df['seq2_id'] = df[['q_id', 't_id']].max(axis=1)
+    
+    # Group by unique pairs and aggregate
+    # - Mean TM-score (average of both directions)
+    # - Min e-value (best significance)
+    print("Aggregating bidirectional scores...")
+    result_df = df.groupby(['seq1_id', 'seq2_id']).agg(
+        tm_score=('alntmscore', 'mean'),
+        evalue=('evalue', 'min')
+    ).reset_index()
+    
+    print(f"Extracted {len(result_df):,} unique pairs")
+    return result_df.to_dict('records')
 
 
 def save_results(pairs, output_path):
@@ -102,28 +123,42 @@ def save_results(pairs, output_path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Foldseek benchmark")
-    parser.add_argument("--structure-dir", required=True, help="Directory with PDB files")
-    parser.add_argument("--foldseek-bin", required=True, help="Path to foldseek binary")
-    parser.add_argument("--output", required=True, help="Output parquet path")
-    parser.add_argument("--fasta", help="Fasta file to filter structures")
-    parser.add_argument("--threads", type=int, default=32, help="Number of threads")
-    args = parser.parse_args()
+    # Check for dataset argument (matching pattern from other benchmark scripts)
+    is_scope40 = len(sys.argv) > 1 and sys.argv[1] == "scope40"
+    
+    # Dataset configurations (paths match tmalign.py)
+    if is_scope40:
+        structure_dir = "data/scope40pdb"
+        output = "results/scope40_foldseek_similarities.csv"
+    else:
+        # CATH dataset (default)
+        structure_dir = "data/pdb/cath-s100"
+        output = "results/cath_foldseek_similarities.csv"
+    
+    foldseek_bin = "binaries/foldseek"
+    threads = 32
 
     print("=" * 80)
     print("Foldseek Benchmark")
-    print(f"Structure dir: {args.structure_dir}")
-    print(f"Output: {args.output}")
-    print(f"Threads: {args.threads}")
+    print(f"Dataset: {'SCOPe40' if is_scope40 else 'CATH'}")
+    print(f"Structure dir: {structure_dir}")
+    print(f"Output: {output}")
+    print(f"Threads: {threads}")
     print("=" * 80)
 
-    pdb_files = get_pdb_files(args.structure_dir)
-    if not pdb_files:
-        raise ValueError(f"No files found in {args.structure_dir}")
+    # Verify paths exist
+    if not Path(structure_dir).exists():
+        raise ValueError(f"Structure directory not found: {structure_dir}")
+    if not Path(foldseek_bin).exists():
+        raise ValueError(f"Foldseek binary not found: {foldseek_bin}")
 
-    df = run_foldseek(args.structure_dir, args.foldseek_bin, args.threads)
+    pdb_files = get_pdb_files(structure_dir)
+    if not pdb_files:
+        raise ValueError(f"No structure files found in {structure_dir}")
+
+    df = run_foldseek(structure_dir, foldseek_bin, threads)
     pairs = parse_results(df)
-    save_results(pairs, args.output)
+    save_results(pairs, output)
 
     print("=" * 80)
     print("Complete!")

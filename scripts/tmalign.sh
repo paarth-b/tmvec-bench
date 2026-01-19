@@ -42,10 +42,10 @@ python -m src.benchmarks.tmalign --dataset scope40
 echo ""
 echo "=========================================="
 
-FASTA_FILE="$REPO_ROOT/data/fasta/cath-domain-seqs-S100-1k.fa"
-OUTPUT_FILE="$REPO_ROOT/results/tmalign_similarities.csv"
+FASTA_FILE="$REPO_ROOT/data/cath-top1k.fa"
+OUTPUT_FILE="$REPO_ROOT/results/cath_tmalign_similarities.csv"
 echo "=========================================="
-echo "Running TM-align predictions on CATH S100..."
+echo "Running TM-align predictions on CATH ..."
 echo ""
 echo "Model: TM-align binaries/TMalign"
 echo "FASTA: ${FASTA_FILE} (1000 sequences)"
