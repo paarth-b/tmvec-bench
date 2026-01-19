@@ -12,7 +12,7 @@ from scipy import stats
 sns.set_theme()
 
 
-def plot_density_scatter(df, pred_col, truth_col, method_name, output_path=None):
+def plot_density_scatter(df, pred_col, truth_col, method_name, dataset_name, output_path=None):
     """Create density scatter plot comparing predicted vs ground truth."""
     fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -29,17 +29,8 @@ def plot_density_scatter(df, pred_col, truth_col, method_name, output_path=None)
     lims = [0, 1]
     ax.plot(lims, lims, 'k--', alpha=0.7, linewidth=2)
 
-    # Determine title based on method
-    if 'foldseek' in method_name.lower():
-        title = 'SCOPe40 Alignment Results (Foldseek)'
-    elif 'tmvec-1' in method_name.lower():
-        title = 'SCOPe40 Alignment Results (TMvec-1)'
-    elif 'tmvec-2' in method_name.lower():
-        title = 'SCOPe40 Alignment Results (TMvec-2)'
-    elif 'student' in method_name.lower():
-        title = 'SCOPe40 Alignment Results (TMvec-Student)'
-    else:
-        title = f'Alignment Results ({method_name})'
+    # Generate title with dataset name
+    title = f'{dataset_name} Alignment Results ({method_name})'
 
     ax.set_title(title, fontsize=20, fontweight='bold', pad=20, fontfamily='sans-serif')
     ax.set_xlabel('TM-align Ground Truth', fontsize=16, fontweight='bold')
@@ -74,41 +65,38 @@ def main():
     parser = argparse.ArgumentParser(description='Generate density scatter plots for method comparison')
     parser.add_argument('method', choices=['foldseek', 'tmvec1', 'tmvec2', 'tmvec2_student'],
                         help='Method to compare against TM-align')
-    parser.add_argument('--tmalign', default='results/tmalign_similarities.parquet',
-                        help='Path to TM-align results')
+    parser.add_argument('--tmalign', help='Path to TM-align results (auto-detected if not provided)')
     parser.add_argument('--method-file', help='Path to method results (auto-detected if not provided)')
     parser.add_argument('--max-pairs', type=int, default=None,
                         help='Maximum number of pairs to load')
     parser.add_argument('--output-dir', help='Output directory (default: figures/{method})')
     args = parser.parse_args()
 
-    # Auto-detect method file and display name
+    # Method display names
     method_config = {
-        'foldseek': {
-            'file': 'results/scope40_foldseek_similarities.csv',
-            'name': 'Foldseek',
-            'tmalign_default': 'results/scope40_tmalign_similarities.csv'
-        },
-        'tmvec1': {
-            'file': 'results/scope40_tmvec1_similarities.csv',
-            'name': 'TMvec-1',
-            'tmalign_default': 'results/scope40_tmalign_similarities.csv'
-        },
-        'tmvec2': {
-            'file': 'results/scope40_tmvec2_similarities.csv',
-            'name': 'TMvec-2',
-            'tmalign_default': 'results/scope40_tmalign_similarities.csv'
-        },
-        'tmvec2_student': {
-            'file': 'results/scope40_tmvec2_student_similarities.csv',
-            'name': 'TMvec-2 Student',
-            'tmalign_default': 'results/scope40_tmalign_similarities.csv'
-        }
+        'foldseek': 'Foldseek',
+        'tmvec1': 'TMvec-1',
+        'tmvec2': 'TMvec-2',
+        'tmvec2_student': 'TMvec-2 Student'
     }
 
-    config = method_config[args.method]
-    method_file = args.method_file or config['file']
-    tmalign_file = args.tmalign if args.tmalign != 'results/tmalign_similarities.parquet' else config['tmalign_default']
+    # Auto-detect or construct method file path
+    if args.method_file:
+        method_file = args.method_file
+    else:
+        # Default to scope40 dataset
+        method_file = f'results/scope40_{args.method}_similarities.csv'
+
+    # Detect dataset from method file path
+    is_scope40 = 'scope40' in Path(method_file).name
+    dataset_name = 'SCOPe40' if is_scope40 else 'CATH'
+    dataset_prefix = 'scope40_' if is_scope40 else ''
+
+    # Auto-detect tmalign file based on dataset
+    if args.tmalign:
+        tmalign_file = args.tmalign
+    else:
+        tmalign_file = f'results/{dataset_prefix}tmalign_similarities.csv'
 
     # Load data - support both CSV and parquet
     def load_file(filepath):
@@ -142,11 +130,22 @@ def main():
 
     print(f"Plotting {len(df_merged)} pairs")
 
-    # Output
-    output_dir = Path(args.output_dir or f'figures/{args.method}')
+    # Output - include dataset in path to avoid overwriting
+    if args.output_dir:
+        output_dir = Path(args.output_dir)
+    else:
+        dataset_subdir = dataset_prefix.rstrip('_') if dataset_prefix else 'cath'
+        output_dir = Path(f'figures/{dataset_subdir}/{args.method}')
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    plot_density_scatter(df_merged, 'tm_score_method', 'tm_score_tmalign', config['name'], output_dir / 'density_scatter')
+    plot_density_scatter(
+        df_merged,
+        'tm_score_method',
+        'tm_score_tmalign',
+        method_config[args.method],
+        dataset_name,
+        output_dir / 'density_scatter'
+    )
     print(f"Saved to {output_dir}/density_scatter.png")
 
 
