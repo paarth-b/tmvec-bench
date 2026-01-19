@@ -84,13 +84,13 @@ def main():
     if args.method_file:
         method_file = args.method_file
     else:
-        # Default to scope40 dataset
-        method_file = f'results/scope40_{args.method}_similarities.csv'
+        # Default to cath dataset
+        method_file = f'results/cath_{args.method}_similarities.csv'
 
     # Detect dataset from method file path
     is_scope40 = 'scope40' in Path(method_file).name
     dataset_name = 'SCOPe40' if is_scope40 else 'CATH'
-    dataset_prefix = 'scope40_' if is_scope40 else ''
+    dataset_prefix = 'scope40_' if is_scope40 else 'cath_'
 
     # Auto-detect tmalign file based on dataset
     if args.tmalign:

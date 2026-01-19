@@ -171,7 +171,7 @@ def main():
         output = args.output or "results/scope40_tmvec2_similarities.csv"
     else:
         fasta = args.fasta or "data/fasta/cath-domain-seqs-S100-1k.fa"
-        output = args.output or "results/tmvec2_similarities.csv"
+        output = args.output or "results/cath_tmvec2_similarities.csv"
 
     device = args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
 

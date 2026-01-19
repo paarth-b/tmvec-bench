@@ -125,7 +125,7 @@ def main():
         max_seq = 1000
     else:
         fasta = "data/fasta/cath-domain-seqs-S100-1k.fa"
-        output = "results/tmvec2_student_similarities.csv"
+        output = "results/cath_tmvec2_student_similarities.csv"
         max_seq = 1000
 
     checkpoint = "binaries/tmvec2_student.pt"

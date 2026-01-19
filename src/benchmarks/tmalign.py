@@ -80,7 +80,7 @@ def main():
         "cath": {
             "fasta": "data/fasta/cath-domain-seqs-S100-1k.fa",
             "pdb_dir": "data/pdb/cath-s100",
-            "output": "results/tmalign_similarities.csv"
+            "output": "results/cath_tmalign_similarities.csv"
         },
         "scope40": {
             "fasta": "data/fasta/scope40-1000.fa",
