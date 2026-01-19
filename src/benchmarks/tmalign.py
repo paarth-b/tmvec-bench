@@ -78,7 +78,7 @@ def main():
     # Dataset configuration
     config = {
         "cath": {
-            "fasta": "data/fasta/cath-domain-seqs-S100-1k.fa",
+            "fasta": "data/cath-top1k.fa",
             "pdb_dir": "data/pdb/cath-s100",
             "output": "results/cath_tmalign_similarities.csv"
         },

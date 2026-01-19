@@ -124,7 +124,7 @@ def main():
         output = "results/scope40_tmvec2_student_similarities.csv"
         max_seq = 1000
     else:
-        fasta = "data/fasta/cath-domain-seqs-S100-1k.fa"
+        fasta = "data/cath-top1k.fa"
         output = "results/cath_tmvec2_student_similarities.csv"
         max_seq = 1000
 

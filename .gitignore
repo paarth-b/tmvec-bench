@@ -22,3 +22,4 @@ scopbenchmark/
 /binaries/tm_vec_cath_model.ckpt
 cath-domain-seqs.fa
 slurm_logs/
+pdb/
