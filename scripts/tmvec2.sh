@@ -38,7 +38,7 @@ echo "Model: TM-Vec 2 binaries/tmvec2_model.ckpt"
 echo "FASTA: ${FASTA_FILE} (1000 sequences)"
 echo "Output: ${OUTPUT_FILE}"
 echo ""
-python -m src.benchmarks.tmvec2 scope40
+python -m src.benchmarks.tmvec2 --dataset scope40
 echo ""
 echo "=========================================="
 

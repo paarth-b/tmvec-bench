@@ -267,7 +267,12 @@ def run_encoding_benchmark(record_seqs, lobster_model, tokenizer, tmvec_model,
 def run_query_benchmark(record_seqs, lobster_model, tokenizer, tmvec_model,
                         device, database_sizes, query_sizes, batch_size=32,
                         num_runs=3, warmup_runs=1):
-    """Benchmark query times for different database and query sizes with proper timing."""
+    """
+    Benchmark query times for different database and query sizes with proper timing.
+    
+    Following TMVec-1's approach: database encoding is done once and NOT included
+    in the query timing. Only query encoding + search are timed.
+    """
     results = []
     
     print("\n" + "="*60)
@@ -283,11 +288,11 @@ def run_query_benchmark(record_seqs, lobster_model, tokenizer, tmvec_model,
         else:
             db_seqs = record_seqs[:database_size]
         
-        # Benchmark database build time
-        db_embeddings, db_mean, db_std, db_times = benchmark_function(
-            encode_sequences_batch,
-            num_runs=num_runs,
-            warmup_runs=warmup_runs,
+        # Encode database ONCE (not included in query benchmark timing)
+        # This matches TMVec-1's approach where the database is pre-encoded
+        synchronize_cuda()
+        start_db = time.perf_counter()
+        db_embeddings = encode_sequences_batch(
             sequences=db_seqs,
             lobster_model=lobster_model,
             tokenizer=tokenizer,
@@ -295,8 +300,10 @@ def run_query_benchmark(record_seqs, lobster_model, tokenizer, tmvec_model,
             device=device,
             batch_size=batch_size
         )
+        synchronize_cuda()
+        db_build_time = time.perf_counter() - start_db
         
-        print(f"Database build: {db_mean:.3f}s ± {db_std:.3f}s")
+        print(f"Database build (one-time): {db_build_time:.3f}s (NOT included in query timings)")
         
         for query_size in query_sizes:
             if query_size > len(record_seqs):
@@ -327,14 +334,13 @@ def run_query_benchmark(record_seqs, lobster_model, tokenizer, tmvec_model,
                 k=10
             )
             
-            total_mean = enc_mean + db_mean + search_mean
-            # Propagate uncertainty: sqrt(sum of variances)
-            total_std = np.sqrt(enc_std**2 + db_std**2 + search_std**2)
+            # Total query time = encoding queries + search (NOT including database build)
+            total_mean = enc_mean + search_mean
+            total_std = np.sqrt(enc_std**2 + search_std**2)
             
             print(
                 f"Query {query_size:>5} vs {database_size:>6} database: "
                 f"encode={enc_mean:.3f}s±{enc_std:.3f}s, "
-                f"db_build={db_mean:.3f}s±{db_std:.3f}s, "
                 f"search={search_mean:.4f}s±{search_std:.4f}s, "
                 f"total={total_mean:.3f}s±{total_std:.3f}s"
             )
@@ -344,8 +350,7 @@ def run_query_benchmark(record_seqs, lobster_model, tokenizer, tmvec_model,
                 "database_size": database_size,
                 "encode_mean": enc_mean,
                 "encode_std": enc_std,
-                "db_build_mean": db_mean,
-                "db_build_std": db_std,
+                "db_build_time_one_time": db_build_time,
                 "search_mean": search_mean,
                 "search_std": search_std,
                 "total_mean": total_mean,
@@ -394,7 +399,7 @@ def main():
     run_warmup(lobster_model, tokenizer, tmvec_model, device)
     
     # Run benchmarks
-    encoding_sizes = [10, 100, 1000, 5000, 10000]
+    encoding_sizes = [10, 100, 1000, 5000, 10000, 50000]
     encode_df = run_encoding_benchmark(
         record_seqs, lobster_model, tokenizer, tmvec_model, 
         device, encoding_sizes, batch_size=args.batch_size,

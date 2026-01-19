@@ -169,7 +169,7 @@ def run_encoding_benchmark(record_seqs, model_deep, model, tokenizer, device,
             encode,
             num_runs=num_runs,
             warmup_runs=warmup_runs,
-            seqs=encoding_seqs,
+            sequences=encoding_seqs,
             model_deep=model_deep,
             model=model,
             tokenizer=tokenizer,
@@ -198,7 +198,12 @@ def run_encoding_benchmark(record_seqs, model_deep, model, tokenizer, device,
 def run_query_benchmark(record_seqs, model_deep, model, tokenizer, device, 
                         database_path, database_sizes, query_sizes,
                         num_runs=3, warmup_runs=1):
-    """Benchmark query times for different database and query sizes with proper timing."""
+    """
+    Benchmark query times for different database and query sizes with proper timing.
+    
+    Database loading is done once and NOT included in the query timing.
+    Only query encoding + search are timed.
+    """
     results = []
     
     print("\n" + "="*60)
@@ -209,16 +214,14 @@ def run_query_benchmark(record_seqs, model_deep, model, tokenizer, device,
     for database_size in database_sizes:
         print(f"\nLoading database with {database_size} sequences...")
         
-        # Benchmark database load time
-        lookup_database, db_mean, db_std, db_times = benchmark_function(
-            load_database,
-            num_runs=num_runs,
-            warmup_runs=warmup_runs,
-            database_path=database_path,
-            database_size=database_size
-        )
+        # Load database ONCE (not included in query benchmark timing)
+        synchronize_cuda()
+        start_db = time.perf_counter()
+        lookup_database = load_database(database_path, database_size)
+        synchronize_cuda()
+        db_load_time = time.perf_counter() - start_db
         
-        print(f"Database load: {db_mean:.3f}s ± {db_std:.3f}s")
+        print(f"Database load (one-time): {db_load_time:.3f}s (NOT included in query timings)")
         
         for query_size in query_sizes:
             if query_size > len(record_seqs):
@@ -231,7 +234,7 @@ def run_query_benchmark(record_seqs, model_deep, model, tokenizer, device,
                 encode,
                 num_runs=num_runs,
                 warmup_runs=warmup_runs,
-                seqs=query_seqs,
+                sequences=query_seqs,
                 model_deep=model_deep,
                 model=model,
                 tokenizer=tokenizer,
@@ -243,19 +246,18 @@ def run_query_benchmark(record_seqs, model_deep, model, tokenizer, device,
                 query,
                 num_runs=num_runs,
                 warmup_runs=warmup_runs,
-                lookup_database=lookup_database,
+                index=lookup_database,
                 queries=queries,
                 k=10
             )
             
-            total_mean = enc_mean + db_mean + search_mean
-            # Propagate uncertainty: sqrt(sum of variances)
-            total_std = np.sqrt(enc_std**2 + db_std**2 + search_std**2)
+            # Total query time = encoding queries + search (NOT including database load)
+            total_mean = enc_mean + search_mean
+            total_std = np.sqrt(enc_std**2 + search_std**2)
             
             print(
                 f"Query {query_size:>5} vs {database_size:>6} database: "
                 f"encode={enc_mean:.3f}s±{enc_std:.3f}s, "
-                f"db_load={db_mean:.3f}s±{db_std:.3f}s, "
                 f"search={search_mean:.4f}s±{search_std:.4f}s, "
                 f"total={total_mean:.3f}s±{total_std:.3f}s"
             )
@@ -265,8 +267,7 @@ def run_query_benchmark(record_seqs, model_deep, model, tokenizer, device,
                 "database_size": database_size,
                 "encode_mean": enc_mean,
                 "encode_std": enc_std,
-                "db_load_mean": db_mean,
-                "db_load_std": db_std,
+                "db_load_time_one_time": db_load_time,
                 "search_mean": search_mean,
                 "search_std": search_std,
                 "total_mean": total_mean,
@@ -296,7 +297,7 @@ def main():
                         help="Output directory (auto-generated if not specified)")
     parser.add_argument("--max-sequences", type=int, default=50000,
                         help="Maximum sequences to load")
-    parser.add_argument("--num-runs", type=int, default=3,
+    parser.add_argument("--num-runs", type=int, default=1,
                         help="Number of timed runs per benchmark")
     parser.add_argument("--warmup-runs", type=int, default=1,
                         help="Number of warmup runs before timing")
@@ -319,11 +320,17 @@ def main():
     run_warmup(model_deep, model, tokenizer, device)
     
     # Run benchmarks
-    encoding_sizes = [10, 100, 1000, 5000, 10000]
+    encoding_sizes = [10, 100, 1000, 5000, 10000, 50000]
     encode_df = run_encoding_benchmark(
         record_seqs, model_deep, model, tokenizer, device, encoding_sizes,
         num_runs=args.num_runs, warmup_runs=args.warmup_runs
     )
+    # Save results
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    output_dir = Path(args.output_dir) if args.output_dir else Path("results/time_benchmarks") / f"tmvec1_{timestamp}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    encode_df.to_csv(output_dir / "encoding_times.csv", index=False)
     
     database_sizes = [1000, 10000, 100000]
     query_sizes = [10, 100, 1000]
@@ -333,12 +340,6 @@ def main():
         num_runs=args.num_runs, warmup_runs=args.warmup_runs
     )
     
-    # Save results
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    output_dir = Path(args.output_dir) if args.output_dir else Path("results/time_benchmarks") / f"tmvec1_{timestamp}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    encode_df.to_csv(output_dir / "encoding_times.csv", index=False)
     query_df.to_csv(output_dir / "query_times.csv", index=False)
     
     # Save benchmark config

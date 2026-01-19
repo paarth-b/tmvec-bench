@@ -28,6 +28,7 @@ export HYDRA_FULL_ERROR=1
 
 # CUSTOMIZE TO YOUR MACHINE: Load required software and activate environment
 # module load python/miniforge3_pytorch/2.7.0
+# module load mamba/latest && source activate tmvec_distill
 
 FASTA_FILE="$REPO_ROOT/data/fasta/scope40-1000.fa"
 OUTPUT_FILE="$REPO_ROOT/results/scope40_tmvec1_similarities.csv"

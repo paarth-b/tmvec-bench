@@ -38,7 +38,7 @@ echo "Model: TM-align binaries/TMalign"
 echo "FASTA: ${FASTA_FILE} (1000 sequences)"
 echo "Output: ${OUTPUT_FILE}"
 echo ""
-python -m src.benchmarks.tmalign scope40
+python -m src.benchmarks.tmalign --dataset scope40
 echo ""
 echo "=========================================="
 
@@ -51,7 +51,7 @@ echo "Model: TM-align binaries/TMalign"
 echo "FASTA: ${FASTA_FILE} (1000 sequences)"
 echo "Output: ${OUTPUT_FILE}"
 echo ""
-python -m src.benchmarks.tmalign
+python -m src.benchmarks.tmalign --dataset cath
 echo "=========================================="
 
 echo ""

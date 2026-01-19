@@ -210,7 +210,12 @@ def run_encoding_benchmark(record_seqs, model, device, encoding_sizes,
 
 def run_query_benchmark(record_seqs, model, device, database_sizes, query_sizes,
                         max_length=600, batch_size=128, num_runs=3, warmup_runs=1):
-    """Benchmark query times for different database and query sizes with proper timing."""
+    """
+    Benchmark query times for different database and query sizes with proper timing.
+    
+    Database encoding is done once and NOT included in the query timing.
+    Only query encoding + search are timed.
+    """
     results = []
     
     print("\n" + "="*60)
@@ -226,19 +231,20 @@ def run_query_benchmark(record_seqs, model, device, database_sizes, query_sizes,
         else:
             db_seqs = record_seqs[:database_size]
         
-        # Benchmark database build time
-        db_embeddings, db_mean, db_std, db_times = benchmark_function(
-            encode_sequences_batch,
-            num_runs=num_runs,
-            warmup_runs=warmup_runs,
+        # Encode database ONCE (not included in query benchmark timing)
+        synchronize_cuda()
+        start_db = time.perf_counter()
+        db_embeddings = encode_sequences_batch(
             sequences=db_seqs,
             model=model,
             device=device,
             max_length=max_length,
             batch_size=batch_size
         )
+        synchronize_cuda()
+        db_build_time = time.perf_counter() - start_db
         
-        print(f"Database build: {db_mean:.3f}s ± {db_std:.3f}s")
+        print(f"Database build (one-time): {db_build_time:.3f}s (NOT included in query timings)")
         
         for query_size in query_sizes:
             if query_size > len(record_seqs):
@@ -268,14 +274,13 @@ def run_query_benchmark(record_seqs, model, device, database_sizes, query_sizes,
                 k=10
             )
             
-            total_mean = enc_mean + db_mean + search_mean
-            # Propagate uncertainty: sqrt(sum of variances)
-            total_std = np.sqrt(enc_std**2 + db_std**2 + search_std**2)
+            # Total query time = encoding queries + search (NOT including database build)
+            total_mean = enc_mean + search_mean
+            total_std = np.sqrt(enc_std**2 + search_std**2)
             
             print(
                 f"Query {query_size:>5} vs {database_size:>6} database: "
                 f"encode={enc_mean:.3f}s±{enc_std:.3f}s, "
-                f"db_build={db_mean:.3f}s±{db_std:.3f}s, "
                 f"search={search_mean:.4f}s±{search_std:.4f}s, "
                 f"total={total_mean:.3f}s±{total_std:.3f}s"
             )
@@ -285,8 +290,7 @@ def run_query_benchmark(record_seqs, model, device, database_sizes, query_sizes,
                 "database_size": database_size,
                 "encode_mean": enc_mean,
                 "encode_std": enc_std,
-                "db_build_mean": db_mean,
-                "db_build_std": db_std,
+                "db_build_time_one_time": db_build_time,
                 "search_mean": search_mean,
                 "search_std": search_std,
                 "total_mean": total_mean,
@@ -354,7 +358,7 @@ def main():
     run_warmup(model, device, max_length=args.max_length)
     
     # Run benchmarks
-    encoding_sizes = [10, 100, 1000, 5000, 10000]
+    encoding_sizes = [10, 100, 1000, 5000, 10000, 50000]
     encode_df = run_encoding_benchmark(
         record_seqs, model, device, encoding_sizes, 
         args.max_length, args.batch_size,

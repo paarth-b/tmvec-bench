@@ -258,7 +258,12 @@ def run_database_creation_benchmark(structure_files, foldseek_binary,
 def run_search_benchmark(structure_files, foldseek_binary, database_sizes, 
                         query_sizes, threads=1, sensitivity=None,
                         num_runs=3, warmup_runs=1):
-    """Benchmark search times for different database and query sizes."""
+    """
+    Benchmark search times for different database and query sizes.
+    
+    Target database creation is done once and NOT included in the query timing.
+    Only query database creation + search are timed.
+    """
     results = []
     
     print("\n" + "="*60)
@@ -280,18 +285,17 @@ def run_search_benchmark(structure_files, foldseek_binary, database_sizes,
         target_db = tempfile.mktemp(suffix="_targetdb")
         
         try:
-            # Create target database (timed)
-            _, db_mean, db_std, db_times = benchmark_function(
-                create_foldseek_database,
-                num_runs=num_runs,
-                warmup_runs=warmup_runs,
+            # Create target database ONCE (not included in query benchmark timing)
+            start_db = time.perf_counter()
+            create_foldseek_database(
                 foldseek_binary=foldseek_binary,
                 structure_dir=db_temp_dir,
                 output_db=target_db,
                 threads=threads
             )
+            db_build_time = time.perf_counter() - start_db
             
-            print(f"Database build: {db_mean:.3f}s ± {db_std:.3f}s")
+            print(f"Database build (one-time): {db_build_time:.3f}s (NOT included in query timings)")
             
             for query_size in query_sizes:
                 print(f"Running queries ({query_size} structures)...")
@@ -333,13 +337,13 @@ def run_search_benchmark(structure_files, foldseek_binary, database_sizes,
                         warmup_runs=warmup_runs
                     )
                     
-                    total_mean = enc_mean + db_mean + search_mean
-                    total_std = np.sqrt(enc_std**2 + db_std**2 + search_std**2)
+                    # Total query time = encoding queries + search (NOT including target database build)
+                    total_mean = enc_mean + search_mean
+                    total_std = np.sqrt(enc_std**2 + search_std**2)
                     
                     print(
                         f"Query {query_size:>5} vs {database_size:>6} database: "
                         f"encode={enc_mean:.3f}s±{enc_std:.3f}s, "
-                        f"db_build={db_mean:.3f}s±{db_std:.3f}s, "
                         f"search={search_mean:.3f}s±{search_std:.3f}s, "
                         f"total={total_mean:.3f}s±{total_std:.3f}s"
                     )
@@ -349,8 +353,7 @@ def run_search_benchmark(structure_files, foldseek_binary, database_sizes,
                         "database_size": database_size,
                         "encode_mean": enc_mean,
                         "encode_std": enc_std,
-                        "db_build_mean": db_mean,
-                        "db_build_std": db_std,
+                        "db_build_time_one_time": db_build_time,
                         "search_mean": search_mean,
                         "search_std": search_std,
                         "total_mean": total_mean,
@@ -387,7 +390,7 @@ def main():
                         help="Path to foldseek binary")
     parser.add_argument("--output-dir", default=None,
                         help="Output directory (auto-generated if not specified)")
-    parser.add_argument("--max-structures", type=int, default=None,
+    parser.add_argument("--max-structures", type=int, default=50000,
                         help="Maximum structures to use")
     parser.add_argument("--threads", type=int, default=1,
                         help="Number of threads for foldseek")
@@ -420,32 +423,25 @@ def main():
     
     if len(structure_files) == 0:
         raise ValueError(f"No structure files found in {args.structure_dir}")
+
+    encoding_sizes = [10, 100, 1000, 5000, 10000]
+    database_sizes = [1000, 10000, 100000]
+    query_sizes = [10, 100, 1000]
     
     # Define benchmark sizes based on available structures
     max_structures = len(structure_files)
     
-    # Database creation benchmark
-    db_creation_sizes = [10, 100, 1000]
-    if max_structures >= 5000:
-        db_creation_sizes.extend([5000, 10000])
-    
     db_creation_df = run_database_creation_benchmark(
-        structure_files, foldseek_path, db_creation_sizes,
+        structure_files, foldseek_path, encoding_sizes,
         threads=args.threads,
         num_runs=args.num_runs, warmup_runs=args.warmup_runs
     )
-    
-    # Search benchmark
-    if max_structures >= 1000:
-        database_sizes = [100, 1000]
-        if max_structures >= 10000:
-            database_sizes.append(10000)
-        query_sizes = [10, 100]
-        if max_structures >= 1000:
-            query_sizes.append(1000)
-    else:
-        database_sizes = [min(100, max_structures)]
-        query_sizes = [min(10, max_structures)]
+
+    # Save results
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    output_dir = Path(args.output_dir) if args.output_dir else Path("results/time_benchmarks") / f"foldseek_{timestamp}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    db_creation_df.to_csv(output_dir / "encoding_times.csv", index=False)
     
     search_df = run_search_benchmark(
         structure_files, foldseek_path, database_sizes, query_sizes,
@@ -453,12 +449,6 @@ def main():
         num_runs=args.num_runs, warmup_runs=args.warmup_runs
     )
     
-    # Save results
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    output_dir = Path(args.output_dir) if args.output_dir else Path("results/time_benchmarks") / f"foldseek_{timestamp}"
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    db_creation_df.to_csv(output_dir / "encoding_times.csv", index=False)
     search_df.to_csv(output_dir / "query_times.csv", index=False)
     
     # Save benchmark config
