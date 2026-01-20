@@ -1,0 +1,8 @@
+,,,,,
+,Model Name,Training Time,# of GPUs,# of sequences,val/loss (accuracy)
+,Lobster_24M,0:06:27,2,"10,000",0.0009577
+,Lobster_150M,0:11:56,2,"10,000",0.0049034
+,ProtT5-XL,1:33:54,2,"10,000",0.001178
+,Ankh_base,2:31:31,2,"10,000",0.041807
+,Ankh_large,1:44:21,2,"10,000",0.0092856
+,ProtMamba,6:31:55,2,"10,000",0.070469
