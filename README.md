@@ -1,6 +1,6 @@
-# TM-Vec 2: Structure Similarity Benchmarking
+# TM-Vec 2 Benchmarking
 
-Benchmarking suite for evaluating protein structure similarity methods on CATH and SCOPe datasets, as described in the ISMB 2026 submission.
+Benchmarking library for evaluating protein structure similarity methods on CATH and SCOPe datasets, as described in the ISMB 2026 submission.
 
 ## Overview
 
@@ -127,15 +127,11 @@ This downloads from ASTRAL/RCSB PDB.
 
 ## Running Benchmarks
 
-All benchmark scripts are in `scripts/`. They can be run locally or on SLURM clusters.
+All benchmark scripts are in `src/benchmarks`. They can be run locally or on SLURM clusters (in the `scripts/` folder).
 
 ```bash
 # CATH
-sbatch scripts/tmvec2_student.sh
-sbatch scripts/foldseek.sh
-sbatch scripts/tmvec2.sh
-sbatch scripts/tmvec1.sh
-sbatch scripts/tmalign.sh
+uv run python -m src.benchmarks.{model_file}
 ```
 
 ## Output Files
