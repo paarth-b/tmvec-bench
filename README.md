@@ -22,6 +22,13 @@ cd tmvec-bench
 ### 2. Install Python Dependencies
 
 Using `uv` (recommended):
+
+Install `uv` if not already installed:
+```bash
+wget -qO- https://astral.sh/uv/install.sh | sh
+```
+
+Install dependencies using `uv`:
 ```bash
 uv sync
 source .venv/bin/activate
@@ -41,19 +48,21 @@ The provided binary `binaries/TMalign` requires x86-64 architecture. For other a
 
 #### Foldseek Binary
 
-D https://github.com/steineggerlab/foldseek/releases/
+Download from [Foldseek GitHub releases](https://github.com/steineggerlab/foldseek/releases/).
 Place the Foldseek executable in `binaries/foldseek`:
 
 ```bash
-# For Linux x86-64:
-wget https://github.com/steineggerlab/foldseek/releases/download/10-941cd33/foldseek-linux-x86_64.tar.gz
-tar xvzf foldseek-linux-x86_64.tar.gz
+# Linux AVX2 build (check using: cat /proc/cpuinfo | grep avx2)
+wget https://mmseqs.com/foldseek/foldseek-linux-avx2.tar.gz
+tar xvzf foldseek-linux-avx2.tar.gz
 mv foldseek/bin/foldseek binaries/foldseek
 chmod +x binaries/foldseek
+```
 
-# For macOS (Intel):
-wget https://github.com/steineggerlab/foldseek/releases/download/10-941cd33/foldseek-osx-universal.tar.gz
-tar xvzf foldseek-osx-universal.tar.gz
+```bash
+# Linux ARM64 build
+wget https://mmseqs.com/foldseek/foldseek-linux-arm64.tar.gz
+tar xvzf foldseek-linux-arm64.tar.gz
 mv foldseek/bin/foldseek binaries/foldseek
 chmod +x binaries/foldseek
 ```
@@ -69,8 +78,8 @@ binaries/foldseek version
 
 Download the TM-Vec CATH checkpoint:
 
+Using huggingface cli (recommended):
 ```bash
-# Using huggingface-cli (recommended):
 hf download scikit-bio/tmvec-cath tm_vec_cath_model.ckpt --local-dir binaries/
 ```
 

@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # ==============================================================================
 
-INPUT_FILE = "/scratch/akeluska/prot_distill_divide/tmvec2_pairs_predictions.parquet"
+# this file is available on hugg
+INPUT_FILE = "/scratch/akeluska/prot_distill_divide/tmvec2_pairs_predictions.parquet" 
 
 WANDB_CONFIG = {
     "entity": None,

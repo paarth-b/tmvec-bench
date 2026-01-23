@@ -502,7 +502,7 @@ def main():
     parser.add_argument("--structure-dir", required=True,
                         help="Directory containing PDB structure files")
     parser.add_argument("--foldseek-binary", 
-                        default="/scratch/akeluska/ismb_submission/tmvec2/binaries/foldseek",
+                        default="binaries/foldseek",
                         help="Path to foldseek binary")
     parser.add_argument("--output-dir", default=None,
                         help="Output directory (auto-generated if not specified)")

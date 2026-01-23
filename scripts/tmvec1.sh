@@ -1,17 +1,4 @@
 #!/bin/bash
-#SBATCH --job-name=tm2-student-bench
-#SBATCH --partition=ghx4
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=72
-#SBATCH --gpus-per-node=1
-#SBATCH --mem=0
-#SBATCH --account=beut-dtai-gh
-#SBATCH --time=12:00:00
-#SBATCH --output=logs/%j/%x.out
-#SBATCH --error=logs/%j/%x.err
-#SBATCH --exclusive
-
 set -e
 
 # Get the repository root directory (parent of scripts directory)
