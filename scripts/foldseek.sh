@@ -55,4 +55,4 @@ echo "Running Foldseek Model Time Benchmark..."
 echo "=========================================="
 python src/time_benchmarks/foldseek_time_benchmark.py \
     --structure-dir data/pdb/cath-s100 \
-    --threads $SLURM_CPUS_PER_TASK 
+    --threads ${SLURM_CPUS_PER_TASK:-1} 

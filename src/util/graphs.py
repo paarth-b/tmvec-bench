@@ -116,8 +116,10 @@ def main():
         df_method['tm_score'] = pd.to_numeric(df_method['tm_score'], errors='coerce')
 
     # Clean sequence IDs
-    df_method['seq1_clean'] = df_method['seq1_id'].str.replace(r'/\d+-\d+', '', regex=True)
-    df_method['seq2_clean'] = df_method['seq2_id'].str.replace(r'/\d+-\d+', '', regex=True)
+    # Remove cath|CLASS| prefix if present (e.g., cath|4_4_0|107lA00 -> 107lA00)
+    # Remove /RANGE suffix if present (e.g., 107lA00/1-162 -> 107lA00)
+    df_method['seq1_clean'] = df_method['seq1_id'].str.replace(r'cath\|[^|]+\|', '', regex=True).str.replace(r'/\d+-\d+', '', regex=True)
+    df_method['seq2_clean'] = df_method['seq2_id'].str.replace(r'cath\|[^|]+\|', '', regex=True).str.replace(r'/\d+-\d+', '', regex=True)
 
     # Merge
     df_merged = pd.merge(
