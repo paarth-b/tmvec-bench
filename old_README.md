@@ -45,7 +45,7 @@ python 'src/util/pdb_downloader.py'
 3. Download model checkpoints from Hugging Face Hub:
 
    ```bash
-   huggingface-cli download scikit-bio/tmvec-cath --local-dir models/tmvec-cath
+   hf download scikit-bio/tmvec-cath --local-dir models/tmvec-cath
    ```
 
 

@@ -23,29 +23,19 @@ def parse_fasta_ids(fasta_path):
 
 
 def download_cath_structure(domain_id, output_dir):
-    """Download CATH structure from RCSB PDB."""
+    """Download CATH structure from CATH API."""
     output_path = output_dir / f"{domain_id}.pdb"
     if output_path.exists():
         return True
 
-    pdb_code = domain_id[:4].lower()
-    middle_chars = pdb_code[1:3]
-    url = f"https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/{middle_chars}/pdb{pdb_code}.ent.gz"
+    url = f"https://www.cathdb.info/version/v4_4_0/api/rest/id/{domain_id}.pdb"
 
     try:
-        gz_path = output_path.with_suffix('.ent.gz')
-        urllib.request.urlretrieve(url, gz_path)
-
-        with gzip.open(gz_path, 'rb') as f_in, open(output_path, 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
-
-        gz_path.unlink()
+        urllib.request.urlretrieve(url, output_path)
         time.sleep(0.1)
         return True
     except Exception as e:
         print(f"Failed {domain_id}: {e}")
-        if gz_path.exists():
-            gz_path.unlink()
         return False
 
 
