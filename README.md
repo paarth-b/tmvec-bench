@@ -101,7 +101,11 @@ The configuration file `binaries/tm_vec_cath_model_params.json` is already inclu
 
 ### CATH S100 Fasta File
 
-This can be downloaded from Google Drive: https://drive.google.com/file/d/1ReR4R8lxC0JS1e0OMwbAfEFI7f_6T7ki/view?usp=sharing and placed in `data/fasta/cath-domain-seqs.fa`.
+Unzip `data/fasta/cath-domain-seqs.zip` to get `data/fasta/cath-domain-seqs.fa`.
+
+```bash
+unzip data/fasta/cath-domain-seqs.zip -d data/fasta
+```
 
 ### CATH S100 Dataset
 
