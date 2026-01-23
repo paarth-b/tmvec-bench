@@ -111,7 +111,13 @@ unzip data/fasta/cath-domain-seqs.zip -d data/fasta
 
 The benchmarks use the first 1,000 domains from CATH S100 (non-redundant at 100% sequence identity).
 
-The FASTA file is already provided at `data/cath-top1k.fa`. Create the directory and download structures for the 1000 domains:
+The FASTA file is already provided at `data/cath-top1k.fa`. We provide a zip file of the first 1000 domains of CATH S100 for convenience, that can be unzipped to get the PDB structures.
+
+```bash
+unzip data/cath-pdb.zip -d data/
+```
+
+Alternatively, if you choose to download structures for the 1000 domains from CATH Database:
 
 ```bash
 mkdir -p data/pdb/cath-s100
@@ -129,7 +135,14 @@ This will download ~1000 PDB structures from RCSB PDB.
 
 The benchmarks use 1,000 domains from SCOPe 2.01 clustered at 40% sequence identity.
 
-The FASTA file is already provided at `data/fasta/scope40-1000.fa`. Download structures for the 1000 domains:
+The FASTA file is already provided at `data/fasta/scope40-1000.fa`. We provide a zip file of the first 1000 domains of SCOPe 2.01 for convenience hosted on Google Drive, that can be unzipped to get the PDB structures.
+
+```bash
+wget "https://drive.usercontent.google.com/download?id=1HjtC7Dv-MZABO9wr5PYr5DPLZ6S642P6&export=download&confirm=t" -O data/scope40-pdb.zip
+unzip data/scope40-pdb.zip -d data/
+```
+
+Alternatively, if you choose to download structures for the 1000 domains from SCOPe Database:
 
 ```bash
 mkdir -p data/scope40pdb
