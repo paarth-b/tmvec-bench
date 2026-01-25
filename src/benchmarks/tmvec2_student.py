@@ -55,8 +55,12 @@ def load_model(checkpoint_path, device):
     return model
 
 
-def compute_embeddings(model, sequences, max_length, batch_size, device):
+def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda'):
     """Encode sequences to embeddings."""
+    checkpoint = "binaries/tmvec2_student.pt"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = load_model(checkpoint, device)
+    
     print("Encoding sequences...")
     tokens = torch.stack([encode_sequence(seq, max_length) for seq in sequences])
     embeddings = []
@@ -129,8 +133,6 @@ def main():
         max_seq = 1000
 
     checkpoint = "binaries/tmvec2_student.pt"
-    max_length = 600
-    batch_size = 128
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print(f"Device: {device}")
@@ -139,8 +141,7 @@ def main():
     print(f"Output: {output}")
 
     seq_ids, sequences = load_fasta(fasta, max_seq)
-    model = load_model(checkpoint, device)
-    embeddings = compute_embeddings(model, sequences, max_length, batch_size, device)
+    embeddings = generate_embeddings(sequences, device)
     tm_matrix = calculate_scores(embeddings)
     save_results(seq_ids, tm_matrix, Path(output))
 

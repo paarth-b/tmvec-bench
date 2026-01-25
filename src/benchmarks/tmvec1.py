@@ -12,17 +12,21 @@ from tqdm import tqdm
 from ..model.tmvec_1_model import TransformerEncoderModule, TransformerEncoderModuleConfig
 
 
-def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda'):
-    """Generate ProtT5 embeddings for protein sequences."""
+def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda', 
+                        checkpoint_path="binaries/tm_vec_cath_model.ckpt"):
+    """
+    Generate TMvec1 embeddings for protein sequences.
+    """
     from transformers import T5Tokenizer, T5EncoderModel
 
+    # Step 1: Generate ProtT5 embeddings
     print("Generating ProtT5 embeddings...")
-    model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_half_uniref50-enc")
+    prot_model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_half_uniref50-enc")
     tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_half_uniref50-enc")
-    model.to(device)
-    model.eval()
+    prot_model.to(device)
+    prot_model.eval()
 
-    all_embeddings = []
+    prot_embeddings = []
     sequences_spaced = [" ".join(list(seq)) for seq in sequences]
 
     with torch.no_grad():
@@ -40,14 +44,38 @@ def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda')
             input_ids = encoded['input_ids'].to(device)
             attention_mask = encoded['attention_mask'].to(device)
 
-            outputs = model(
+            outputs = prot_model(
                 input_ids=input_ids,
                 attention_mask=attention_mask
             )
             embeddings = outputs.last_hidden_state
-            all_embeddings.append(embeddings.cpu())
+            prot_embeddings.append(embeddings.cpu())
 
-    return all_embeddings
+    # Free ProtT5 memory
+    del prot_model
+    torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
+    # Step 2: Transform through TMvec encoder
+    print("Loading TMvec model...")
+    checkpoint = torch.load(checkpoint_path, map_location='cpu')
+    config = TransformerEncoderModuleConfig(d_model=1024)
+    tmvec_model = TransformerEncoderModule(config)
+    tmvec_model.load_state_dict(checkpoint['state_dict'])
+    tmvec_model.to(device)
+    tmvec_model.eval()
+
+    print("Transforming embeddings with TMvec...")
+    all_embeddings = []
+
+    with torch.no_grad():
+        for batch in tqdm(prot_embeddings, desc="TMvec encoding"):
+            batch = batch.to(device)
+            batch_size_curr, seq_len = batch.shape[:2]
+            padding_mask = torch.zeros(batch_size_curr, seq_len, dtype=torch.bool, device=device)
+            emb = tmvec_model(batch, src_mask=None, src_key_padding_mask=padding_mask)
+            all_embeddings.append(emb.cpu().numpy())
+
+    return np.concatenate(all_embeddings, axis=0)
 
 
 def load_fasta(fasta_path, max_sequences=None):
@@ -78,32 +106,6 @@ def load_fasta(fasta_path, max_sequences=None):
 
     print(f"Loaded {len(seq_ids)} sequences")
     return seq_ids, sequences
-
-
-
-
-def transform_embeddings(base_embeddings, checkpoint_path, device):
-    """Transform embeddings with TMvec model."""
-    print("Loading TMvec model...")
-    checkpoint = torch.load(checkpoint_path, map_location='cpu')
-    config = TransformerEncoderModuleConfig(d_model=1024)
-    model = TransformerEncoderModule(config)
-    model.load_state_dict(checkpoint['state_dict'])
-    model.to(device)
-    model.eval()
-
-    print("Transforming embeddings...")
-    all_embeddings = []
-
-    with torch.no_grad():
-        for batch in tqdm(base_embeddings, desc="TMvec encoding"):
-            batch = batch.to(device)
-            batch_size, seq_len = batch.shape[:2]
-            padding_mask = torch.zeros(batch_size, seq_len, dtype=torch.bool, device=device)
-            emb = model(batch, src_mask=None, src_key_padding_mask=padding_mask)
-            all_embeddings.append(emb.cpu().numpy())
-
-    return np.concatenate(all_embeddings, axis=0)
 
 
 def calculate_scores(embeddings):
@@ -159,8 +161,9 @@ def main():
     print(f"Output: {output}")
 
     seq_ids, sequences = load_fasta(fasta, max_seq)
-    base_embeddings = generate_embeddings(sequences, batch_size, device=device)
-    tmvec_embeddings = transform_embeddings(base_embeddings, checkpoint, device)
+    tmvec_embeddings = generate_embeddings(
+        sequences, batch_size, device=device, checkpoint_path=checkpoint
+    )
     tm_matrix = calculate_scores(tmvec_embeddings)
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)

@@ -11,6 +11,43 @@ from tqdm import tqdm
 from src.model.tmvec_2_model import TMScorePredictor, TMVecConfig
 from lobster.model import LobsterPMLM
 
+def transform_embeddings(base_embeddings, attention_masks, device):
+    """Transform base embeddings into structure-aware embeddings using TMvec-2 model."""
+    print("Loading TMvec-2 model from HuggingFace...")
+    checkpoint_path = hf_hub_download(
+        repo_id="scikit-bio/tmvec-2",
+        filename="tmvec-2.ckpt"
+    )
+    checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+
+    state_dict = checkpoint['state_dict']
+
+    config = TMVecConfig(
+        d_model=408,
+        num_layers=4,
+        projection_hidden_dim=1024
+    )
+    model = TMScorePredictor(config)
+    model.load_state_dict(state_dict)
+    model.to(device)
+    model.eval()
+
+    print("Transforming embeddings...")
+    all_embeddings = []
+
+    with torch.no_grad():
+        for batch_emb, attn_mask in tqdm(zip(base_embeddings, attention_masks), desc="TMvec-2 encoding", total=len(base_embeddings)):
+            batch_emb = batch_emb.to(device)
+            attn_mask = attn_mask.to(device)
+
+            # Convert attention_mask to padding_mask (attention_mask: 1=real, 0=padding)
+            # padding_mask: True=padding, False=real
+            padding_mask = (attn_mask == 0)
+
+            emb = model.encode_sequence(batch_emb, padding_mask)
+            all_embeddings.append(emb.cpu().numpy())
+
+    return np.concatenate(all_embeddings, axis=0)
 
 def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda'):
     """Generate LOBSTER embeddings for protein sequences using tokenizer approach."""
@@ -51,7 +88,7 @@ def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda')
             all_attention_masks.append(attention_mask.cpu())
 
     print(f"Generated LOBSTER embeddings: {all_embeddings[0].shape}")
-    return all_embeddings, all_attention_masks
+    return transform_embeddings(all_embeddings, all_attention_masks, device)
 
 
 def load_fasta(fasta_path, max_sequences=None):
@@ -82,46 +119,6 @@ def load_fasta(fasta_path, max_sequences=None):
 
     print(f"Loaded {len(seq_ids)} sequences")
     return seq_ids, sequences
-
-
-def transform_embeddings(base_embeddings, attention_masks, device):
-    """Transform base embeddings into structure-aware embeddings using TMvec-2 model."""
-    print("Loading TMvec-2 model from HuggingFace...")
-    checkpoint_path = hf_hub_download(
-        repo_id="scikit-bio/tmvec-2",
-        filename="tmvec-2.ckpt"
-    )
-    checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
-
-    state_dict = checkpoint['state_dict']
-
-    config = TMVecConfig(
-        d_model=408,
-        num_layers=4,
-        projection_hidden_dim=1024
-    )
-    model = TMScorePredictor(config)
-    model.load_state_dict(state_dict)
-    model.to(device)
-    model.eval()
-
-    print("Transforming embeddings...")
-    all_embeddings = []
-
-    with torch.no_grad():
-        for batch_emb, attn_mask in tqdm(zip(base_embeddings, attention_masks), desc="TMvec-2 encoding", total=len(base_embeddings)):
-            batch_emb = batch_emb.to(device)
-            attn_mask = attn_mask.to(device)
-
-            # Convert attention_mask to padding_mask (attention_mask: 1=real, 0=padding)
-            # padding_mask: True=padding, False=real
-            padding_mask = (attn_mask == 0)
-
-            emb = model.encode_sequence(batch_emb, padding_mask)
-            all_embeddings.append(emb.cpu().numpy())
-
-    return np.concatenate(all_embeddings, axis=0)
-
 
 def calculate_scores(embeddings):
     print("Calculating pairwise scores...")
@@ -186,8 +183,7 @@ def main():
     print("=" * 80)
 
     seq_ids, sequences = load_fasta(fasta, args.max_sequences)
-    base_embeddings, attention_masks = generate_embeddings(sequences, args.batch_size, device=device)
-    tmvec_embeddings = transform_embeddings(base_embeddings, attention_masks, device)
+    tmvec_embeddings = generate_embeddings(sequences, args.batch_size, device=device)
     tm_matrix = calculate_scores(tmvec_embeddings)
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
