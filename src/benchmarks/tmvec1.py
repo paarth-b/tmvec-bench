@@ -12,27 +12,42 @@ from tqdm import tqdm
 from ..model.tmvec_1_model import TransformerEncoderModule, TransformerEncoderModuleConfig
 
 
-def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda', 
+def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda',
                         checkpoint_path="binaries/tm_vec_cath_model.ckpt"):
     """
     Generate TMvec1 embeddings for protein sequences.
+
+    Uses streaming processing to avoid OOM: each batch goes through ProtT5 -> TMvec
+    immediately rather than accumulating all ProtT5 embeddings in RAM first.
     """
     from transformers import T5Tokenizer, T5EncoderModel
 
-    # Step 1: Generate ProtT5 embeddings
-    print("Generating ProtT5 embeddings...")
+    # Load both models upfront
+    print("Loading ProtT5 model...")
     prot_model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_half_uniref50-enc")
     tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_half_uniref50-enc")
     prot_model.to(device)
     prot_model.eval()
 
-    prot_embeddings = []
+    print("Loading TMvec model...")
+    checkpoint = torch.load(checkpoint_path, map_location='cpu')
+    config = TransformerEncoderModuleConfig(d_model=1024)
+    tmvec_model = TransformerEncoderModule(config)
+    tmvec_model.load_state_dict(checkpoint['state_dict'])
+    tmvec_model.to(device)
+    tmvec_model.eval()
+
+    # Stream processing: ProtT5 -> TMvec for each batch immediately
+    # This avoids storing all ProtT5 embeddings in RAM
+    print("Generating embeddings (streaming ProtT5 -> TMvec)...")
+    all_embeddings = []
     sequences_spaced = [" ".join(list(seq)) for seq in sequences]
 
     with torch.no_grad():
         for i in tqdm(range(0, len(sequences_spaced), batch_size)):
             batch_seqs = sequences_spaced[i:i + batch_size]
 
+            # ProtT5 encoding
             encoded = tokenizer(
                 batch_seqs,
                 padding=True,
@@ -48,32 +63,22 @@ def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda',
                 input_ids=input_ids,
                 attention_mask=attention_mask
             )
-            embeddings = outputs.last_hidden_state
-            prot_embeddings.append(embeddings.cpu())
+            prot_emb = outputs.last_hidden_state
 
-    # Free ProtT5 memory
-    del prot_model
-    torch.cuda.empty_cache() if torch.cuda.is_available() else None
-
-    # Step 2: Transform through TMvec encoder
-    print("Loading TMvec model...")
-    checkpoint = torch.load(checkpoint_path, map_location='cpu')
-    config = TransformerEncoderModuleConfig(d_model=1024)
-    tmvec_model = TransformerEncoderModule(config)
-    tmvec_model.load_state_dict(checkpoint['state_dict'])
-    tmvec_model.to(device)
-    tmvec_model.eval()
-
-    print("Transforming embeddings with TMvec...")
-    all_embeddings = []
-
-    with torch.no_grad():
-        for batch in tqdm(prot_embeddings, desc="TMvec encoding"):
-            batch = batch.to(device)
-            batch_size_curr, seq_len = batch.shape[:2]
+            # TMvec encoding - process immediately, don't store ProtT5 output
+            batch_size_curr, seq_len = prot_emb.shape[:2]
             padding_mask = torch.zeros(batch_size_curr, seq_len, dtype=torch.bool, device=device)
-            emb = tmvec_model(batch, src_mask=None, src_key_padding_mask=padding_mask)
-            all_embeddings.append(emb.cpu().numpy())
+            tmvec_emb = tmvec_model(prot_emb, src_mask=None, src_key_padding_mask=padding_mask)
+
+            # Store only the final embedding (batch_size x 512)
+            all_embeddings.append(tmvec_emb.cpu().numpy())
+
+            # Clear intermediate tensors
+            del prot_emb, outputs, input_ids, attention_mask, encoded
+
+    # Free model memory
+    del prot_model, tmvec_model
+    torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
     return np.concatenate(all_embeddings, axis=0)
 

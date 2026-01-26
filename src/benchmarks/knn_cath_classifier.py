@@ -530,7 +530,7 @@ def print_results_table(all_results: dict, k_values: list[int]):
     # Header
     header = f"{'Method':<20} {'Level':<15}"
     for k in k_values:
-        header += f"{'Top ' + str(k):<12}"
+        header += f"{'k=' + str(k):<12}"
     print(header)
     print("-" * 80)
     

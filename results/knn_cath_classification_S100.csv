@@ -1,0 +1,13 @@
+method,level,k=1,k=3,k=5,k=10
+student,class,0.9690,0.9829,0.9869,0.9909
+student,architecture,0.9398,0.9597,0.9671,0.9753
+student,topology,0.9182,0.9353,0.9422,0.9508
+student,superfamily,0.8953,0.9113,0.9180,0.9264
+tmvec1,class,0.9827,0.9915,0.9942,0.9969
+tmvec1,architecture,0.9743,0.9835,0.9873,0.9920
+tmvec1,topology,0.9669,0.9734,0.9761,0.9796
+tmvec1,superfamily,0.9583,0.9630,0.9648,0.9668
+tmvec2,class,0.9733,0.9859,0.9895,0.9933
+tmvec2,architecture,0.9441,0.9651,0.9727,0.9810
+tmvec2,topology,0.9184,0.9373,0.9447,0.9543
+tmvec2,superfamily,0.8988,0.9160,0.9230,0.9320

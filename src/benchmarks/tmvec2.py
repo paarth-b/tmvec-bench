@@ -11,60 +11,47 @@ from tqdm import tqdm
 from src.model.tmvec_2_model import TMScorePredictor, TMVecConfig
 from lobster.model import LobsterPMLM
 
-def transform_embeddings(base_embeddings, attention_masks, device):
-    """Transform base embeddings into structure-aware embeddings using TMvec-2 model."""
+def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda'):
+    """
+    Generate TMvec-2 embeddings for protein sequences.
+
+    Uses streaming processing to avoid OOM: each batch goes through Lobster -> TMvec-2
+    immediately rather than accumulating all Lobster embeddings in RAM first.
+    """
+    # Load Lobster model
+    print("Loading Lobster-24M model...")
+    lobster_model = LobsterPMLM("asalam91/lobster_24M")
+    tokenizer = lobster_model.tokenizer
+    lobster_model.to(device)
+    lobster_model.eval()
+
+    # Load TMvec-2 model
     print("Loading TMvec-2 model from HuggingFace...")
     checkpoint_path = hf_hub_download(
         repo_id="scikit-bio/tmvec-2",
         filename="tmvec-2.ckpt"
     )
     checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
-
-    state_dict = checkpoint['state_dict']
-
     config = TMVecConfig(
         d_model=408,
         num_layers=4,
         projection_hidden_dim=1024
     )
-    model = TMScorePredictor(config)
-    model.load_state_dict(state_dict)
-    model.to(device)
-    model.eval()
+    tmvec_model = TMScorePredictor(config)
+    tmvec_model.load_state_dict(checkpoint['state_dict'])
+    tmvec_model.to(device)
+    tmvec_model.eval()
 
-    print("Transforming embeddings...")
+    # Stream processing: Lobster -> TMvec-2 for each batch immediately
+    # This avoids storing all Lobster embeddings in RAM
+    print("Generating embeddings (streaming Lobster -> TMvec-2)...")
     all_embeddings = []
-
-    with torch.no_grad():
-        for batch_emb, attn_mask in tqdm(zip(base_embeddings, attention_masks), desc="TMvec-2 encoding", total=len(base_embeddings)):
-            batch_emb = batch_emb.to(device)
-            attn_mask = attn_mask.to(device)
-
-            # Convert attention_mask to padding_mask (attention_mask: 1=real, 0=padding)
-            # padding_mask: True=padding, False=real
-            padding_mask = (attn_mask == 0)
-
-            emb = model.encode_sequence(batch_emb, padding_mask)
-            all_embeddings.append(emb.cpu().numpy())
-
-    return np.concatenate(all_embeddings, axis=0)
-
-def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda'):
-    """Generate LOBSTER embeddings for protein sequences using tokenizer approach."""
-    print("Generating Lobster-24M embeddings...")
-    model = LobsterPMLM("asalam91/lobster_24M")
-    tokenizer = model.tokenizer
-    model.to(device)
-    model.eval()
-
-    all_embeddings = []
-    all_attention_masks = []
 
     with torch.no_grad():
         for i in tqdm(range(0, len(sequences), batch_size)):
             batch_seqs = sequences[i:i + batch_size]
 
-            # Use tokenizer for proper padding and truncation
+            # Lobster encoding
             encoded = tokenizer(
                 batch_seqs,
                 padding=True,
@@ -76,19 +63,28 @@ def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda')
             input_ids = encoded['input_ids'].to(device)
             attention_mask = encoded['attention_mask'].to(device)
 
-            # Get hidden states
-            outputs = model.model(
+            outputs = lobster_model.model(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
                 output_hidden_states=True
             )
-            embeddings = outputs.hidden_states[-1]
+            lobster_emb = outputs.hidden_states[-1]
 
-            all_embeddings.append(embeddings.cpu())
-            all_attention_masks.append(attention_mask.cpu())
+            # TMvec-2 encoding - process immediately, don't store Lobster output
+            padding_mask = (attention_mask == 0)
+            tmvec_emb = tmvec_model.encode_sequence(lobster_emb, padding_mask)
 
-    print(f"Generated LOBSTER embeddings: {all_embeddings[0].shape}")
-    return transform_embeddings(all_embeddings, all_attention_masks, device)
+            # Store only the final embedding (batch_size x 512)
+            all_embeddings.append(tmvec_emb.cpu().numpy())
+
+            # Clear intermediate tensors
+            del lobster_emb, outputs, input_ids, attention_mask, encoded, padding_mask
+
+    # Free model memory
+    del lobster_model, tmvec_model
+    torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
+    return np.concatenate(all_embeddings, axis=0)
 
 
 def load_fasta(fasta_path, max_sequences=None):
