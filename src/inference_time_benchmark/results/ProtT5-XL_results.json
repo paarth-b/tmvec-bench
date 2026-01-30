@@ -1,0 +1,642 @@
+[
+    {
+        "Sequence Length": 64,
+        "Batch Size": 8,
+        "Ms per protein": 0.009883522987365723
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 16,
+        "Ms per protein": 0.008798769861459731
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 24,
+        "Ms per protein": 0.008999688923358918
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 32,
+        "Ms per protein": 0.009148485213518142
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 40,
+        "Ms per protein": 0.009034605026245117
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 48,
+        "Ms per protein": 0.00914306640625
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 56,
+        "Ms per protein": 0.009324714115687778
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 64,
+        "Ms per protein": 0.009308446012437344
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 72,
+        "Ms per protein": 0.009697438610924616
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 80,
+        "Ms per protein": 0.009338541477918625
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 88,
+        "Ms per protein": 0.009584850343790922
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 96,
+        "Ms per protein": 0.00977635954817136
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 104,
+        "Ms per protein": 0.009355836992080395
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 112,
+        "Ms per protein": 0.009673986796821866
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 120,
+        "Ms per protein": 0.009277814626693725
+    },
+    {
+        "Sequence Length": 64,
+        "Batch Size": 128,
+        "Ms per protein": 0.009382080007344484
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 8,
+        "Ms per protein": 0.025709842145442963
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 16,
+        "Ms per protein": 0.018484518676996232
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 24,
+        "Ms per protein": 0.01851427505413691
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 32,
+        "Ms per protein": 0.01864001676440239
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 40,
+        "Ms per protein": 0.018709622025489807
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 48,
+        "Ms per protein": 0.01957323352495829
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 56,
+        "Ms per protein": 0.019378351313727244
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 64,
+        "Ms per protein": 0.018833156488835812
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 72,
+        "Ms per protein": 0.018547570208708446
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 80,
+        "Ms per protein": 0.018412410169839858
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 88,
+        "Ms per protein": 0.01892790821465579
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 96,
+        "Ms per protein": 0.018771599357326824
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 104,
+        "Ms per protein": 0.018543807474466472
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 112,
+        "Ms per protein": 0.018341169293437685
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 120,
+        "Ms per protein": 0.018416265944639843
+    },
+    {
+        "Sequence Length": 128,
+        "Batch Size": 128,
+        "Ms per protein": 0.018335347529500723
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 8,
+        "Ms per protein": 0.043538506329059604
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 16,
+        "Ms per protein": 0.028306764364242554
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 24,
+        "Ms per protein": 0.02992977201938629
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 32,
+        "Ms per protein": 0.030298402160406114
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 40,
+        "Ms per protein": 0.02865153342485428
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 48,
+        "Ms per protein": 0.028636910766363145
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 56,
+        "Ms per protein": 0.02894864252635411
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 64,
+        "Ms per protein": 0.029009304754436017
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 72,
+        "Ms per protein": 0.02834292335642709
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 80,
+        "Ms per protein": 0.02842144578695297
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 88,
+        "Ms per protein": 0.028549330884760075
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 96,
+        "Ms per protein": 0.028718574345111846
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 104,
+        "Ms per protein": 0.028763188421726225
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 112,
+        "Ms per protein": 0.028722447050469262
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 120,
+        "Ms per protein": 0.028440422415733337
+    },
+    {
+        "Sequence Length": 192,
+        "Batch Size": 128,
+        "Ms per protein": 0.028483290877193212
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 8,
+        "Ms per protein": 0.06013445407152176
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 16,
+        "Ms per protein": 0.0377624973654747
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 24,
+        "Ms per protein": 0.03972301036119461
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 32,
+        "Ms per protein": 0.038332792744040486
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 40,
+        "Ms per protein": 0.03776710331439972
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 48,
+        "Ms per protein": 0.038502949724594754
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 56,
+        "Ms per protein": 0.03814278244972229
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 64,
+        "Ms per protein": 0.03789431042969227
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 72,
+        "Ms per protein": 0.03814425352546904
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 80,
+        "Ms per protein": 0.03797958642244339
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 88,
+        "Ms per protein": 0.038253539123318414
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 96,
+        "Ms per protein": 0.037940824901064235
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 104,
+        "Ms per protein": 0.039373434163056886
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 112,
+        "Ms per protein": 0.03930224222796304
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 120,
+        "Ms per protein": 0.03924830118815104
+    },
+    {
+        "Sequence Length": 256,
+        "Batch Size": 128,
+        "Ms per protein": 0.039040693826973435
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 8,
+        "Ms per protein": 0.07856892794370651
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 16,
+        "Ms per protein": 0.048933780193328856
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 24,
+        "Ms per protein": 0.04877157558997472
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 32,
+        "Ms per protein": 0.04883974827826023
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 40,
+        "Ms per protein": 0.0488345330953598
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 48,
+        "Ms per protein": 0.048655883967876436
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 56,
+        "Ms per protein": 0.04875510675566537
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 64,
+        "Ms per protein": 0.04861776549369097
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 72,
+        "Ms per protein": 0.04871937268310123
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 80,
+        "Ms per protein": 0.05042695999145508
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 88,
+        "Ms per protein": 0.05085390589453957
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 96,
+        "Ms per protein": 0.05067534347375234
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 104,
+        "Ms per protein": 0.050387624708505774
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 112,
+        "Ms per protein": 0.05035755197916712
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 120,
+        "Ms per protein": 0.050191109677155815
+    },
+    {
+        "Sequence Length": 320,
+        "Batch Size": 128,
+        "Ms per protein": 0.049998412001878025
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 8,
+        "Ms per protein": 0.09711728394031524
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 16,
+        "Ms per protein": 0.06044270694255829
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 24,
+        "Ms per protein": 0.05836824476718903
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 32,
+        "Ms per protein": 0.05939580127596855
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 40,
+        "Ms per protein": 0.058602877259254456
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 48,
+        "Ms per protein": 0.058825204024712245
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 56,
+        "Ms per protein": 0.05895059087446758
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 64,
+        "Ms per protein": 0.058568880148231986
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 72,
+        "Ms per protein": 0.05997149182690514
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 80,
+        "Ms per protein": 0.06084712609648704
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 88,
+        "Ms per protein": 0.060660936615683815
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 96,
+        "Ms per protein": 0.060745391870538394
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 104,
+        "Ms per protein": 0.06030907069261258
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 112,
+        "Ms per protein": 0.060486590010779245
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 120,
+        "Ms per protein": 0.060265018244584405
+    },
+    {
+        "Sequence Length": 384,
+        "Batch Size": 128,
+        "Ms per protein": 0.06021682526916265
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 8,
+        "Ms per protein": 0.11776852607727051
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 16,
+        "Ms per protein": 0.0731320209801197
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 24,
+        "Ms per protein": 0.0713542272647222
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 32,
+        "Ms per protein": 0.07078728079795837
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 40,
+        "Ms per protein": 0.07057576537132264
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 48,
+        "Ms per protein": 0.07124233121673267
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 56,
+        "Ms per protein": 0.07135603832347052
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 64,
+        "Ms per protein": 0.0734244216233492
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 72,
+        "Ms per protein": 0.07338576995664173
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 80,
+        "Ms per protein": 0.07286407008767128
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 88,
+        "Ms per protein": 0.0730065171014179
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 96,
+        "Ms per protein": 0.07253855528930823
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 104,
+        "Ms per protein": 0.07235075074892777
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 112,
+        "Ms per protein": 0.0727101002420698
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 120,
+        "Ms per protein": 0.0729956583182017
+    },
+    {
+        "Sequence Length": 448,
+        "Batch Size": 128,
+        "Ms per protein": 0.07272543860599398
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 8,
+        "Ms per protein": 0.13672031015157698
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 16,
+        "Ms per protein": 0.08297253325581551
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 24,
+        "Ms per protein": 0.08439157356818518
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 32,
+        "Ms per protein": 0.08327755406498909
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 40,
+        "Ms per protein": 0.08330698728561402
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 48,
+        "Ms per protein": 0.08363935401042302
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 56,
+        "Ms per protein": 0.08636305949517659
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 64,
+        "Ms per protein": 0.08635513670742512
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 72,
+        "Ms per protein": 0.08583946377038956
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 80,
+        "Ms per protein": 0.08587218031287193
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 88,
+        "Ms per protein": 0.08631204258311878
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 96,
+        "Ms per protein": 0.08599378255506357
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 104,
+        "Ms per protein": 0.0861226567855248
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 112,
+        "Ms per protein": 0.08526523453848703
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 120,
+        "Ms per protein": 0.08562521517276764
+    },
+    {
+        "Sequence Length": 512,
+        "Batch Size": 128,
+        "Ms per protein": 0.08538655256852508
+    }
+]

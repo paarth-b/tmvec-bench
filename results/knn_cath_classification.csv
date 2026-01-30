@@ -1,4 +1,4 @@
-method,level,Top 1,Top 3,Top 5,Top 10
+method,level,k=1,k=3,k=5,k=10
 student,class,0.909,0.952,0.972,0.986
 student,architecture,0.831,0.883,0.906,0.931
 student,topology,0.746,0.782,0.801,0.822
