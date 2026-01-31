@@ -80,7 +80,7 @@ Download the TM-Vec CATH checkpoint:
 
 Using huggingface cli (recommended):
 ```bash
-hf download scikit-bio/tmvec-cath tm_vec_cath_model.ckpt --local-dir binaries/
+huggingface-cli download scikit-bio/tmvec-cath tm_vec_cath_model.ckpt --local-dir binaries/
 ```
 
 Or download manually from [HuggingFace Hub](https://huggingface.co/scikit-bio/tmvec-cath/tree/main) and place `tm_vec_cath_model.ckpt` in `binaries/`.
@@ -89,7 +89,7 @@ Or download manually from [HuggingFace Hub](https://huggingface.co/scikit-bio/tm
 
 ```bash
 # TM-Vec 2 (Lobster-based teacher model)
-hf download scikit-bio/tmvec-2 --local-dir models/tmvec-2
+huggingface-cli download scikit-bio/tmvec-2 --local-dir models/tmvec-2
 
 # TM-Vec 2s (student model) - already provided in binaries/
 # File: binaries/tmvec2_student.pt
