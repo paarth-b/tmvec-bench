@@ -1,10 +1,10 @@
 # TM-Vec 2 Benchmarking
 
-Benchmarking library for evaluating protein structure similarity methods on CATH and SCOPe datasets, as described in the ISMB 2026 submission.
+Benchmarking library for TMVec-2 Suite, comparing to structure alignment methods like Foldseek and TMAlign.
 
-## Overview
+## Description
 
-This toolkit benchmarks four protein structure similarity methods against TM-Align scores:
+This repo benchmarks four protein structure similarity methods against TM-Align scores:
 - **Foldseek**: Fast structure comparison using 3Di sequences
 - **TM-Vec**: Neural network model for TM-score prediction from ProtT5-XL embeddings
 - **TM-Vec 2**: Optimized architecture using Lobster-24M foundation model
@@ -157,7 +157,7 @@ This downloads from ASTRAL/RCSB PDB.
 
 ## Running Benchmarks
 
-Using bash scripts in `scripts/` (recommended):
+Using bash scripts in `scripts/` (recommended on clusters):
 
 ```bash
 # This will run the benchmarks on the CATH S100 and SCOPe40 datasets, as well as the time benchmarks and generate the plots.
@@ -168,7 +168,7 @@ bash scripts/foldseek.sh
 bash scripts/tmalign.sh
 ```
 
-Alternatively, all benchmark code is in `src/benchmarks` and `src/time_benchmarks`. They can be run locally or on SLURM clusters.
+Alternatively, all benchmark code is in `src/benchmarks` and `src/time_benchmarks`. They can be run locally.
 
 ```bash
 uv run python -m src.benchmarks.{model_file}
@@ -180,6 +180,7 @@ Example:
 uv run python -m src.benchmarks.tmvec1
 uv run python -m src.time_benchmarks.tmvec1_time_benchmark
 ```
+> **_NOTE:_**  TMAlign is a cpu-based script, and may take a long time (>10 Hours) to generate 500,000 pair scores. For convenience, TMAlign results already exist in the results/ folder.
 
 ## Output Files
 
@@ -192,26 +193,20 @@ All benchmarks generate CSV files in `results/` with the following format:
 | 107lA00 | 108lA00 | 0.8523   | 1.2e-10               |
 | 107lA00 | 109lA00 | 0.7234   | 3.4e-08               |
 
-For **1000 sequences**, each benchmark produces:
-- **~499,500 pairwise comparisons** (all-vs-all excluding self)
-- **CSV file size**: ~15-30 MB per benchmark
 
 ### Visualization
 
-Generate plots from results:
+To generate plots from results, follow readme instructions in the following:
 
 ```bash
 # CATH visualizations
 cd src/plotting/cath
-jupyter notebook plot.ipynb
 
 # SCOPe visualizations
-cd ../scope
-jupyter notebook plot.ipynb
+cd src/plotting/scope
 
 # Runtime benchmarks
-cd ../time
-jupyter notebook plot.ipynb
+cd src/plotting/time
 ```
 
 Plots are saved to `figures/` and include:
@@ -231,47 +226,3 @@ To validate the results in the ISMB 2026 paper:
 3. **Figure 5 (Homology Detection)**: Use the ground truth classification files to compute ROC/PR curves at different hierarchy levels (Class → Superfamily/Family).
 
 4. **Supplementary Tables (Runtime)**: Time benchmarks are in `src/time_benchmarks/`. Results should match the encoding/query time tables.
-
-Expected runtime for full benchmark suite (per dataset):
-- TM-align: ~12-24 hours (CPU-bound, can parallelize)
-- TM-Vec: ~6-8 hours (ProtT5-XL embedding generation)
-- Foldseek: ~30-60 minutes
-- TM-Vec 2: ~1-2 hours
-- TM-Vec 2s: ~5-10 minutes
-
-## File Structure
-
-After setup, your directory should look like:
-
-```
-tmvec-bench/
-├── binaries/
-│   ├── foldseek
-│   ├── TMalign
-│   ├── tm_vec_cath_model.ckpt
-│   ├── tm_vec_cath_model_params.json
-│   └── tmvec2_student.pt
-├── data/
-│   ├── cath-top1k.fa
-│   ├── fasta/
-│   │   ├── scope40-1000.fa
-│   │   └── cath-domain-seqs-S100-1k.fa
-│   ├── pdb/
-│   │   └── cath-s100/
-│   └── scope40pdb/
-├── models/
-│   └── tmvec-2/
-├── results/
-│   ├── cath_tmalign_similarities.csv
-│   ├── cath_foldseek_similarities.csv
-│   ├── cath_tmvec1_similarities.csv
-│   ├── cath_tmvec2_similarities.csv
-│   ├── cath_tmvec2_student_similarities.csv
-│   └── scope40_*.csv
-├── figures/
-└── src/
-    ├── benchmarks/
-    ├── plotting/
-    ├── time_benchmarks/
-    └── util/
-```
