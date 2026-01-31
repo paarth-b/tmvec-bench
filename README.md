@@ -197,6 +197,7 @@ All benchmarks generate CSV files in `results/` with the following format:
 ### Visualization
 
 To generate plots from results, follow readme instructions in the following:
+Generated plots are available in the plots subfolders.
 
 ```bash
 # CATH visualizations
