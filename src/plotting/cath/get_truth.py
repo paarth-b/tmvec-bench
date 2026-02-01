@@ -19,7 +19,7 @@ import pandas as pd
 def main():
     levels = ['class', 'architecture', 'topology', 'superfamily']
     columns = levels + ['S35', 'S60', 'S95', 'S100', 'count', 'length', 'resolution']
-    df = pd.read_csv('cath-domain-list-S100.txt', sep='\s+', names=columns, index_col=0)
+    df = pd.read_csv('cath-domain-list-S100.txt', sep=r'\s+', names=columns, index_col=0)
 
     for level in levels:
         df[level] = df[level].astype(str)
@@ -28,7 +28,8 @@ def main():
     df['superfamily'] = df['topology'].str.cat(df['superfamily'], sep='.')
 
     with open('domain.lst', 'r') as fh:
-        domains = fh.read().splitlines()
+        lines = fh.read().splitlines()
+        domains = lines[::2]
     df = df.loc[domains]
 
     with open('truth.tsv', 'w') as fh:
