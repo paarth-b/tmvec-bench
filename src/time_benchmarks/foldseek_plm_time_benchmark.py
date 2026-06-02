@@ -20,6 +20,11 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+try:
+    from .benchmark_env import capture_benchmark_environment, write_json
+except ImportError:
+    from benchmark_env import capture_benchmark_environment, write_json
+
 
 # ==============================================================================
 # TIMING UTILITIES
@@ -134,8 +139,9 @@ def run_foldseek_command(foldseek_binary, cmd_args, verbose=False):
 
     result = subprocess.run(
         cmd,
-        capture_output=True,
-        text=True
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
     )
 
     if result.returncode != 0 and verbose:
@@ -204,7 +210,13 @@ def create_prostt5_database(foldseek_binary, fasta_path, output_db,
         env['TMPDIR'] = str(temp_dir)
 
     cmd = [str(foldseek_binary)] + args
-    result = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+        env=env,
+    )
 
     if result.returncode != 0:
         raise RuntimeError(f"Failed to create ProstT5 database: {result.stderr}")
@@ -224,7 +236,12 @@ def pad_database_for_gpu(foldseek_binary, input_db, output_db):
     ]
 
     cmd = [str(foldseek_binary)] + args
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
 
     if result.returncode != 0:
         raise RuntimeError(f"Failed to pad database: {result.stderr}")
@@ -555,6 +572,16 @@ def main():
                         help="Base temp directory for benchmark files")
     parser.add_argument("--use-gpu", action="store_true",
                         help="Enable GPU acceleration for ProstT5 inference and search")
+    parser.add_argument("--encoding-sizes", default=None,
+                        help="Comma-separated list of encoding sizes to override the default "
+                             "(e.g. '50000' to only fill in a single point)")
+    parser.add_argument("--database-sizes", default=None,
+                        help="Comma-separated list of database sizes for the search benchmark "
+                             "to override the default (e.g. '100000')")
+    parser.add_argument("--skip-search", action="store_true",
+                        help="Skip the query/search benchmark (only run encoding)")
+    parser.add_argument("--skip-encoding", action="store_true",
+                        help="Skip the encoding benchmark (only run query/search)")
     args = parser.parse_args()
 
     # Verify foldseek binary exists
@@ -595,9 +622,13 @@ def main():
 
     print(f"Using {len(sequences)} sequences for benchmark")
 
-    # Encoding sizes - smaller for ProstT5 since it's slower
-    encoding_sizes = [10, 100, 1000, 5000, 10000]
+    # Encoding sizes (match the Foldseek structural benchmark so plots align)
+    encoding_sizes = [10, 100, 1000, 5000, 10000, 50000]
+    if args.encoding_sizes:
+        encoding_sizes = [int(s) for s in args.encoding_sizes.split(",") if s.strip()]
     database_sizes = [1000, 10000]
+    if args.database_sizes:
+        database_sizes = [int(s) for s in args.database_sizes.split(",") if s.strip()]
     query_sizes = [10, 100, 1000]
 
     # Warn if duplication is needed (fine for timing purposes)
@@ -611,29 +642,31 @@ def main():
         benchmark_temp_dir.mkdir(parents=True, exist_ok=True)
         print(f"Using temp directory: {benchmark_temp_dir}")
 
-    encoding_df = run_encoding_benchmark(
-        sequences, foldseek_path, str(prostt5_weights),
-        encoding_sizes, threads=args.threads, use_gpu=args.use_gpu,
-        num_runs=args.num_runs, warmup_runs=args.warmup_runs,
-        benchmark_temp_dir=str(benchmark_temp_dir) if benchmark_temp_dir else None
-    )
-
-    # Save results
+    # Set up output dir (needed by both encoding and search outputs)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     mode_suffix = "_gpu" if args.use_gpu else "_cpu"
     output_dir = Path(args.output_dir) if args.output_dir else Path("results/time_benchmarks") / f"prostt5{mode_suffix}_{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
-    encoding_df.to_csv(output_dir / "encoding_times.csv", index=False)
 
-    search_df = run_search_benchmark(
-        sequences, foldseek_path, str(prostt5_weights),
-        database_sizes, query_sizes,
-        threads=args.threads, sensitivity=args.sensitivity, use_gpu=args.use_gpu,
-        num_runs=args.num_runs, warmup_runs=args.warmup_runs,
-        benchmark_temp_dir=str(benchmark_temp_dir) if benchmark_temp_dir else None
-    )
+    if not args.skip_encoding:
+        encoding_df = run_encoding_benchmark(
+            sequences, foldseek_path, str(prostt5_weights),
+            encoding_sizes, threads=args.threads, use_gpu=args.use_gpu,
+            num_runs=args.num_runs, warmup_runs=args.warmup_runs,
+            benchmark_temp_dir=str(benchmark_temp_dir) if benchmark_temp_dir else None
+        )
+        encoding_df.to_csv(output_dir / "encoding_times.csv", index=False)
 
-    search_df.to_csv(output_dir / "query_times.csv", index=False)
+    if not args.skip_search:
+        search_df = run_search_benchmark(
+            sequences, foldseek_path, str(prostt5_weights),
+            database_sizes, query_sizes,
+            threads=args.threads, sensitivity=args.sensitivity, use_gpu=args.use_gpu,
+            num_runs=args.num_runs, warmup_runs=args.warmup_runs,
+            benchmark_temp_dir=str(benchmark_temp_dir) if benchmark_temp_dir else None
+        )
+
+        search_df.to_csv(output_dir / "query_times.csv", index=False)
 
     # Save benchmark config
     config = {
@@ -650,8 +683,16 @@ def main():
         "query_sizes": query_sizes,
         "use_gpu": args.use_gpu,
         "mode": mode_str,
+        "system_info_file": "system_info.json",
     }
     pd.Series(config).to_json(output_dir / "benchmark_config.json")
+    write_json(
+        output_dir / "system_info.json",
+        capture_benchmark_environment(
+            requested_threads=args.threads,
+            accelerator="gpu" if args.use_gpu else "cpu",
+        ),
+    )
 
     total_benchmark_time = time.perf_counter() - start_time
     print(f"\n{'='*60}")

@@ -11,9 +11,9 @@ TMVec2,1000,13.4
 TMVec2,5000,17.57
 TMVec2,10000,13.69
 TMVec2,50000,15.16
-Foldseek,10,8.49
-Foldseek,100,19.91
-Foldseek,1000,23.58
-Foldseek,5000,43.42
-Foldseek,10000,76.07
-Foldseek,50000,101.33
+Foldseek,10,14.84
+Foldseek,100,13.31
+Foldseek,1000,4.45
+Foldseek,5000,2.21
+Foldseek,10000,2.22
+Foldseek,50000,2.19

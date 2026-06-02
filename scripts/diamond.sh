@@ -5,7 +5,12 @@ set -e
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+BENCHMARK_THREADS="${BENCHMARK_THREADS:-${SLURM_CPUS_PER_TASK:-4}}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-${BENCHMARK_THREADS}}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-${BENCHMARK_THREADS}}"
+
 echo "CPUs: ${SLURM_CPUS_PER_TASK:-$(nproc)}"
+echo "Benchmark threads: ${BENCHMARK_THREADS}"
 echo "Start: $(date)"
 echo ""
 
@@ -46,7 +51,7 @@ echo "=========================================="
 python src/time_benchmarks/diamond_time_benchmark.py \
     --fasta data/fasta/cath-domain-seqs-S100.fa \
     --diamond-bin binaries/diamond \
-    --threads ${SLURM_CPUS_PER_TASK:-32}
+    --threads ${BENCHMARK_THREADS}
 echo "=========================================="
 
 echo ""

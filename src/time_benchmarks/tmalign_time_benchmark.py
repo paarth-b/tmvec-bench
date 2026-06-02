@@ -17,6 +17,11 @@ import pandas as pd
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
+try:
+    from .benchmark_env import capture_benchmark_environment, write_json
+except ImportError:
+    from benchmark_env import capture_benchmark_environment, write_json
+
 
 # ==============================================================================
 # STRUCTURE LOADING
@@ -238,8 +243,13 @@ def main():
         "encoding_sizes": encoding_sizes,
         "database_sizes": database_sizes,
         "query_sizes": query_sizes,
+        "system_info_file": "tmalign_system_info.json",
     }
     pd.Series(config).to_json(output_dir / "tmalign_benchmark_config.json")
+    write_json(
+        output_dir / "tmalign_system_info.json",
+        capture_benchmark_environment(requested_threads=args.threads, accelerator="cpu"),
+    )
 
     total_time = time.perf_counter() - start_time
     print(f"\n{'=' * 60}")

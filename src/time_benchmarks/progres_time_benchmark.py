@@ -16,6 +16,11 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
+try:
+    from .benchmark_env import capture_benchmark_environment, write_json
+except ImportError:
+    from benchmark_env import capture_benchmark_environment, write_json
+
 # Add progres to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "progres"))
 
@@ -359,8 +364,13 @@ def main():
         "encoding_sizes": encoding_sizes,
         "database_sizes": database_sizes,
         "query_sizes": query_sizes,
+        "system_info_file": "progres_system_info.json",
     }
     pd.Series(config).to_json(output_dir / "progres_benchmark_config.json")
+    write_json(
+        output_dir / "progres_system_info.json",
+        capture_benchmark_environment(requested_threads=args.threads, accelerator=device),
+    )
 
     total_benchmark_time = time.perf_counter() - start_time
     print(f"\n{'=' * 60}")

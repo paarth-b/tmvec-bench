@@ -30,7 +30,8 @@ def main():
         for baseline in methods.values():
             if baseline == ref_model:
                 continue
-            for size in times[ref_model].index:
+            common_sizes = sorted(set(times[ref_model].index).intersection(times[baseline].index))
+            for size in common_sizes:
                 speedup = times[baseline][size] / times[ref_model][size]
                 rows.append({
                     'compared_to': baseline,

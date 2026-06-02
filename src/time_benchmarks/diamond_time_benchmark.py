@@ -15,6 +15,11 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+try:
+    from .benchmark_env import capture_benchmark_environment, write_json
+except ImportError:
+    from benchmark_env import capture_benchmark_environment, write_json
+
 
 # ==============================================================================
 # TIMING UTILITIES
@@ -94,7 +99,12 @@ def create_diamond_db(diamond_bin, fasta_path, db_path, threads=1):
         "--db", str(db_path),
         "--threads", str(threads)
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
     if result.returncode != 0:
         raise RuntimeError(f"Diamond makedb failed: {result.stderr}")
     return db_path
@@ -113,7 +123,12 @@ def search_diamond(diamond_bin, query_fasta, db_path, output_path, threads=1):
         "--evalue", "10",
         "--sensitive"
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+    )
     if result.returncode != 0:
         raise RuntimeError(f"Diamond blastp failed: {result.stderr}")
     return output_path
@@ -330,8 +345,13 @@ def main():
         "encoding_sizes": encoding_sizes,
         "database_sizes": database_sizes,
         "query_sizes": query_sizes,
+        "system_info_file": "diamond_system_info.json",
     }
     pd.Series(config).to_json(output_dir / "diamond_benchmark_config.json")
+    write_json(
+        output_dir / "diamond_system_info.json",
+        capture_benchmark_environment(requested_threads=args.threads, accelerator="cpu"),
+    )
 
     total_benchmark_time = time.perf_counter() - start_time
     print(f"\n{'=' * 60}")

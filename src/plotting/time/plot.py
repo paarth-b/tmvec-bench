@@ -54,6 +54,20 @@ PREFERRED_METHODS = [
     'foldseek_gpu',
     'prostt5_gpu',
 ]
+# Fixed per-method colors (matplotlib tab10) so every plot uses the same
+# color for the same model regardless of which methods are present/ordered.
+METHOD_COLORS = {
+    'tmvec1': '#1f77b4',
+    'tmvec2': '#ff7f0e',
+    'tmvec2_student': '#2ca02c',
+    'foldseek': '#d62728',
+    'foldseek_gpu': '#9467bd',
+    'prostt5_gpu': '#8c564b',
+}
+
+
+def normalize_method_name(method):
+    return METHOD_ALIASES.get(method, method)
 
 
 def load_runtime_pair(method, encoding_path, query_path, source):
@@ -88,17 +102,50 @@ def method_name_from_config(config_path, default_label=None):
     return dirname
 
 
+def resolve_run_files(config_path):
+    generic_encoding = config_path.parent / "encoding_times.csv"
+    generic_query = config_path.parent / "query_times.csv"
+    if generic_encoding.exists() and generic_query.exists():
+        return generic_encoding, generic_query
+
+    suffix = "_benchmark_config.json"
+    prefix = config_path.name[:-len(suffix)] if config_path.name.endswith(suffix) else config_path.stem
+    prefixed_encoding = config_path.parent / f"{prefix}_encoding_times.csv"
+    prefixed_query = config_path.parent / f"{prefix}_query_times.csv"
+    if prefixed_encoding.exists() and prefixed_query.exists():
+        return prefixed_encoding, prefixed_query
+    return None, None
+
+
+def run_priority(source, config_path):
+    if source == "top_level":
+        return 3
+    return 2
+
+
+def run_sort_key(entry):
+    return (entry["priority"], entry["mtime"])
+
+
 def discover_top_level_runs():
     seen_methods = set()
     for config_path in sorted(RESULTS_DIR.glob("*_benchmark_config.json")):
         suffix = "_benchmark_config.json"
         method = config_path.name[:-len(suffix)] if config_path.name.endswith(suffix) else config_path.stem
-        encoding_path = RESULTS_DIR / f"{method}_encoding_times.csv"
-        query_path = RESULTS_DIR / f"{method}_query_times.csv"
-        if not encoding_path.exists() or not query_path.exists():
+        encoding_path, query_path = resolve_run_files(config_path)
+        if encoding_path is None or query_path is None:
             continue
         seen_methods.add(method)
-        yield method_name_from_config(config_path, default_label=method), encoding_path, query_path, str(config_path)
+        resolved_method = method_name_from_config(config_path, default_label=method)
+        yield {
+            "method": resolved_method,
+            "normalized_method": normalize_method_name(resolved_method),
+            "encoding_path": encoding_path,
+            "query_path": query_path,
+            "source": str(config_path),
+            "priority": run_priority("top_level", config_path),
+            "mtime": config_path.stat().st_mtime,
+        }
     for method in KNOWN_TOP_LEVEL_METHODS:
         if method in seen_methods:
             continue
@@ -106,18 +153,43 @@ def discover_top_level_runs():
         query_path = RESULTS_DIR / f"{method}_query_times.csv"
         if not encoding_path.exists() or not query_path.exists():
             continue
-        yield method, encoding_path, query_path, str(RESULTS_DIR)
+        yield {
+            "method": method,
+            "normalized_method": normalize_method_name(method),
+            "encoding_path": encoding_path,
+            "query_path": query_path,
+            "source": str(RESULTS_DIR),
+            "priority": 3,
+            "mtime": max(encoding_path.stat().st_mtime, query_path.stat().st_mtime),
+        }
 
 
 def discover_runtime_runs():
     if not TIME_BENCHMARKS_DIR.exists():
         return
-    for config_path in sorted(TIME_BENCHMARKS_DIR.glob("*/benchmark_config.json")):
-        encoding_path = config_path.parent / "encoding_times.csv"
-        query_path = config_path.parent / "query_times.csv"
-        if not encoding_path.exists() or not query_path.exists():
+    for config_path in sorted(TIME_BENCHMARKS_DIR.rglob("*benchmark_config.json")):
+        encoding_path, query_path = resolve_run_files(config_path)
+        if encoding_path is None or query_path is None:
             continue
-        yield method_name_from_config(config_path), encoding_path, query_path, str(config_path.parent)
+        method = method_name_from_config(config_path)
+        yield {
+            "method": method,
+            "normalized_method": normalize_method_name(method),
+            "encoding_path": encoding_path,
+            "query_path": query_path,
+            "source": str(config_path.parent),
+            "priority": run_priority("runtime", config_path),
+            "mtime": config_path.stat().st_mtime,
+        }
+
+
+def select_preferred_runs():
+    selected = {}
+    for entry in [*discover_top_level_runs(), *discover_runtime_runs()]:
+        current = selected.get(entry["normalized_method"])
+        if current is None or run_sort_key(entry) > run_sort_key(current):
+            selected[entry["normalized_method"]] = entry
+    return list(selected.values())
 
 
 def normalize_methods(df):
@@ -136,8 +208,8 @@ def available_methods(df):
 
 # %%
 encoding_tables, query_tables = [], []
-for method, enc_path, qry_path, source in [*discover_top_level_runs(), *discover_runtime_runs()]:
-    enc, qry = load_runtime_pair(method, enc_path, qry_path, source)
+for entry in select_preferred_runs():
+    enc, qry = load_runtime_pair(entry["method"], entry["encoding_path"], entry["query_path"], entry["source"])
     encoding_tables.append(enc)
     query_tables.append(qry)
 
@@ -164,7 +236,8 @@ methods = available_methods(df)
 names = [METHOD_LABELS[method] for method in methods]
 for method, name in zip(methods, names):
     df_ = df.query(f'method == "{method}"')
-    plt.plot('encoding_size', 'mean_seconds', data=df_, marker='o', label=name)
+    plt.plot('encoding_size', 'mean_seconds', data=df_, marker='o', label=name,
+             color=METHOD_COLORS[method])
 plt.legend(title='Method')
 plt.xscale('log')
 plt.yscale('log')
@@ -184,11 +257,12 @@ s_max = df.groupby('method')['seqs_per_second'].max().loc[methods]
 s_max
 
 # %%
-plt.figure(figsize=(4, 4))
+plt.figure(figsize=(8, 5))
 positions = np.arange(len(methods))
-plt.bar(x=positions, height=s_max.to_numpy())
+plt.bar(x=positions, height=s_max.to_numpy(),
+        color=[METHOD_COLORS[method] for method in methods])
 for i, method in enumerate(methods):
-    plt.text(i, s_max[method], '{:.4g}'.format(s_max[method]), ha='center')
+    plt.text(i, s_max[method] * 1.1, '{:.4g}'.format(s_max[method]), ha='center')
 plt.yscale('log')
 plt.ylim(top=plt.ylim()[1] * 2)
 plt.xlabel('Method')
@@ -244,12 +318,15 @@ if 'diamond' not in set(df['method']):
     df = pd.concat([df, diamond], ignore_index=True)
 
 # %%
-db_sizes = sorted(df['database_size'].unique())
-db_sizes
-
-# %%
 methods = available_methods(df)
 names = [METHOD_LABELS[method] for method in methods]
+
+# %%
+# Only consider database sizes that the plotted methods actually cover.
+# (e.g. TM-Align uses tiny db sizes of 50/100 but is not plotted here, so
+# including those would create empty subplot columns.)
+db_sizes = sorted(df[df['method'].isin(methods)]['database_size'].unique())
+db_sizes
 
 # %%
 fig, axes = plt.subplots(1, len(db_sizes), sharey=True, figsize=(2.8 * len(db_sizes), 4))
@@ -258,7 +335,8 @@ for i, size in enumerate(db_sizes):
     ax = axes[i]
     for method, name in zip(methods, names):
         df_ = df.query(f'database_size == {size} & method == "{method}"')
-        ax.plot('query_size', 'total_mean', data=df_, marker='o', label=name)
+        ax.plot('query_size', 'total_mean', data=df_, marker='o', label=name,
+                color=METHOD_COLORS[method])
     ax.set_xscale('log')
     ax.xaxis.set_major_formatter(ScalarFormatter())
     if i == 0:

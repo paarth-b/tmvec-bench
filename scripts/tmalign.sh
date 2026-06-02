@@ -5,7 +5,12 @@ set -e
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+BENCHMARK_THREADS="${BENCHMARK_THREADS:-${SLURM_CPUS_PER_TASK:-4}}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-${BENCHMARK_THREADS}}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-${BENCHMARK_THREADS}}"
+
 echo "CPUs: $SLURM_CPUS_PER_TASK"
+echo "Benchmark threads: ${BENCHMARK_THREADS}"
 echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
 echo "Start: $(date)"
 echo ""
@@ -53,4 +58,4 @@ echo "=========================================="
 echo "Running TM-align Model Time Benchmark..."
 echo "=========================================="
 python -m src.time_benchmarks.tmalign_time_benchmark \
-    --threads ${SLURM_CPUS_PER_TASK:-1}
+    --threads ${BENCHMARK_THREADS}
