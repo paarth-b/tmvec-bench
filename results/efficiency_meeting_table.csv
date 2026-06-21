@@ -1,0 +1,8 @@
+method_key,method,shared_runtime_seconds,shared_runtime_metric,shared_vs_tmvec2s_x,large_runtime_seconds,large_runtime_metric,large_vs_tmvec2s_x,peak_encoding_size,peak_encoding_rate,peak_encoding_metric,note
+tmvec2_student,TM-Vec 2s,0.22745084421088302,total_mean,1.0,0.2004722934216261,total_mean,1.0,50000,5178.063994885429,seqs_per_second,learned TM-score model
+tmvec2,TM-Vec 2,2.5166884803523617,total_mean,11.064757702191653,2.5168957859277725,total_mean,12.554831108926999,100,482.58596820811346,seqs_per_second,learned TM-score model
+foldseek,Foldseek CPU,16.7458066487064,total_mean,73.62384917411157,,total_mean,,50000,2368.6839639533146,structs_per_second,32-thread CPU rerun with 50k encoding point
+foldseek_gpu,Foldseek GPU,120.43283872616787,total_mean,529.4895217645687,,total_mean,,10000,671.5299322015318,structs_per_second,GPU prefilter mode
+prostt5_gpu,Foldseek PLM,62.477271296704814,total_mean,274.6847193003974,,total_mean,,5000,34.340570859437896,seqs_per_second,ProstT5 + Foldseek GPU
+diamond,Diamond,1.1298134767760832,search_mean,4.96728636332766,2.568085870395104,search_mean,12.810178536711796,50000,325916.91362579644,seqs_per_second,sequence baseline; speed-only context
+tmvec1,TM-Vec,37.033713093027465,total_mean,162.8207326357133,37.04244007915258,total_mean,184.77585828404852,10,28.141319999743786,seqs_per_second,original TM-Vec model

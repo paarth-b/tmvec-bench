@@ -16,6 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from Bio import SeqIO
 
+from src.time_benchmarks.benchmark_env import capture_benchmark_environment, write_json
 from src.time_benchmarks.embed_structure_model import trans_basic_block, trans_basic_block_Config
 from src.time_benchmarks.tm_vec_utils import encode, load_database, query
 
@@ -350,8 +351,13 @@ def main():
         "encoding_sizes": encoding_sizes,
         "database_sizes": database_sizes,
         "query_sizes": query_sizes,
+        "system_info_file": "system_info.json",
     }
     pd.Series(config).to_json(output_dir / "benchmark_config.json")
+    write_json(
+        output_dir / "system_info.json",
+        capture_benchmark_environment(requested_threads=None, accelerator=str(device)),
+    )
     
     total_benchmark_time = time.perf_counter() - start_time
     print(f"\n{'='*60}")

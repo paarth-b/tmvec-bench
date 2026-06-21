@@ -11,9 +11,9 @@ TMVec2 Student,1000,0.07
 TMVec2 Student,5000,0.06
 TMVec2 Student,10000,0.07
 TMVec2 Student,50000,0.07
-Foldseek,10,7.99
-Foldseek,100,2.27
-Foldseek,1000,1.76
-Foldseek,5000,2.47
-Foldseek,10000,5.55
-Foldseek,50000,6.69
+Foldseek,10,13.97
+Foldseek,100,1.52
+Foldseek,1000,0.33
+Foldseek,5000,0.13
+Foldseek,10000,0.16
+Foldseek,50000,0.14
