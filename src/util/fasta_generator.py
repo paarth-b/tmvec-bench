@@ -2,10 +2,11 @@
 """Extract FASTA sequences from PDB files."""
 
 import sys
+import warnings
 from pathlib import Path
+
 from Bio.PDB import PDBParser
 from Bio.SeqUtils import seq1
-import warnings
 
 
 def pdb_to_fasta(pdb_dir, output, max_count=None):

@@ -6,10 +6,7 @@ Generate two tables with combined encoding and query times, respectively.
 import pandas as pd
 
 
-# Path to the result directory. Adjust as needed.
 resdir = 'results'
-
-# Methods being compared.
 methods = ['tmvec1', 'tmvec2', 'tmvec2_student', 'foldseek']
 
 

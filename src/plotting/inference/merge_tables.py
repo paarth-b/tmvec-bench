@@ -6,10 +6,7 @@ Generate a table with combined model inference benchmarks.
 import pandas as pd
 
 
-# Path to the result directory. Adjust as needed.
 resdir = 'results'
-
-# Methods being compared.
 methods = ['Lobster 24M', 'Lobster 150M', 'ProtT5-XL', 'Ankh Base', 'Ankh Large', 'ProtMamba']
 
 

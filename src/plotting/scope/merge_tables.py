@@ -6,10 +6,7 @@ Generate a table with combined SCOPe 40 analysis results.
 import pandas as pd
 
 
-# Path to the result directory. Adjust as needed.
 resdir = 'results'
-
-# Methods being compared.
 methods = ['tmvec1', 'tmvec2', 'tmvec2_student', 'tmalign', 'foldseek']
 
 
@@ -41,7 +38,6 @@ def main():
     # Combine results.
     df = pd.concat(dfs, axis=1)
     print(df.shape[0])
-    # df.dropna(how='any', inplace=True)
 
     # Append ground truth.
     truth = pd.read_table('truth.tsv')
@@ -50,7 +46,6 @@ def main():
     truth.drop(columns=['a', 'b'], inplace=True)
     df = pd.concat([truth, df], axis=1)
 
-    # Output.
     df.to_csv('results.tsv', sep='\t')
 
 
