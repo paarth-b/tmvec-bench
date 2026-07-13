@@ -12,16 +12,9 @@ import os
 
 
 def get_pdb_files(structure_dir):
-    """Get all PDB files from structure directory efficiently using os.scandir."""
-    pdb_files = []
-    structure_path = Path(structure_dir)
-    
-    # Use os.scandir for better performance on large directories
-    with os.scandir(structure_path) as entries:
-        for entry in entries:
-            if entry.is_file() and (entry.name.endswith('.pdb') or entry.name.endswith('.cif')):
-                pdb_files.append(Path(entry.path))
-    
+    """Return sorted PDB file paths from the structure directory."""
+    with os.scandir(structure_dir) as entries:
+        pdb_files = [Path(e.path) for e in entries if e.is_file()]
     pdb_files.sort()
     print(f"Found {len(pdb_files)} structure files")
     return pdb_files
@@ -47,13 +40,13 @@ def run_foldseek(structure_dir, foldseek_bin, threads):
             "--min-ungapped-score", "0"
         ]
 
-        # Run without capturing output so we can see progress
+        # Don't capture output, so Foldseek progress stays visible.
         result = subprocess.run(cmd)
 
         if result.returncode != 0:
             raise RuntimeError("Foldseek failed")
 
-        # Read results before tmp_dir is deleted
+        # Read results before tmp_dir is deleted.
         df = pd.read_csv(tsv_path, sep='\t', header=None,
                         names=['query', 'target', 'alntmscore', 'evalue'],
                         low_memory=False)
@@ -63,51 +56,42 @@ def run_foldseek(structure_dir, foldseek_bin, threads):
 
 
 def parse_results(df):
-    """
-    Extract unique pairwise comparisons and average bidirectional scores.
-    
-    Uses vectorized pandas operations instead of iterrows for massive speedup
-    on large result sets (100-1000x faster for millions of rows).
+    """Extract unique pairs and average the two bidirectional scores.
+
+    Vectorized so it scales to millions of alignment rows.
     """
     print("Parsing results...")
-    
-    # Vectorized extraction of IDs from file paths
-    # Much faster than applying Path().stem row by row
+
+    # Extract the domain ID from each file path.
     df = df.copy()
     df['q_id'] = df['query'].str.extract(r'/([^/]+)\.[^.]+$')[0]
     df['t_id'] = df['target'].str.extract(r'/([^/]+)\.[^.]+$')[0]
-    
-    # Handle case where extraction failed (simple filenames without path)
+
+    # Fall back to a plain filename when there was no path to match.
     mask_q = df['q_id'].isna()
     mask_t = df['t_id'].isna()
     if mask_q.any():
         df.loc[mask_q, 'q_id'] = df.loc[mask_q, 'query'].str.replace(r'\.[^.]+$', '', regex=True)
     if mask_t.any():
         df.loc[mask_t, 't_id'] = df.loc[mask_t, 'target'].str.replace(r'\.[^.]+$', '', regex=True)
-    
-    # Remove _MODEL_* suffix if present (vectorized)
+
+    # Strip any _MODEL_* suffix.
     df['q_id'] = df['q_id'].str.split('_MODEL_').str[0]
     df['t_id'] = df['t_id'].str.split('_MODEL_').str[0]
-    
-    # Filter out self-comparisons
+
     df = df[df['q_id'] != df['t_id']]
-    
     print(f"Processing {len(df):,} non-self alignments...")
-    
-    # Create canonical pair keys (sorted alphabetically)
-    # This ensures (A,B) and (B,A) map to the same key
+
+    # Canonical pair key so (A,B) and (B,A) collapse together.
     df['seq1_id'] = df[['q_id', 't_id']].min(axis=1)
     df['seq2_id'] = df[['q_id', 't_id']].max(axis=1)
-    
-    # Group by unique pairs and aggregate
-    # - Mean TM-score (average of both directions)
-    # - Min e-value (best significance)
+
     print("Aggregating bidirectional scores...")
     result_df = df.groupby(['seq1_id', 'seq2_id']).agg(
         tm_score=('alntmscore', 'mean'),
         evalue=('evalue', 'min')
     ).reset_index()
-    
+
     print(f"Extracted {len(result_df):,} unique pairs")
     return result_df.to_dict('records')
 
@@ -123,18 +107,15 @@ def save_results(pairs, output_path):
 
 
 def main():
-    # Check for dataset argument (matching pattern from other benchmark scripts)
     is_scope40 = len(sys.argv) > 1 and sys.argv[1] == "scope40"
-    
-    # Dataset configurations (paths match tmalign.py)
+
     if is_scope40:
-        structure_dir = "data/scope40pdb"
-        output = "results/scope40_foldseek_similarities.csv"
+        structure_dir = "data/pdb/SCOPe40"
+        output = "/work/nvme/beut/paarthbatra/data/results/scope40_foldseek_similarities.csv"
     else:
-        # CATH dataset (default)
-        structure_dir = "data/pdb/cath-s100"
-        output = "results/cath_foldseek_similarities.csv"
-    
+        structure_dir = "data/pdb/CATH"
+        output = "/work/nvme/beut/paarthbatra/data/results/cath_foldseek_similarities.csv"
+
     foldseek_bin = "binaries/foldseek"
     threads = 32
 
@@ -146,7 +127,6 @@ def main():
     print(f"Threads: {threads}")
     print("=" * 80)
 
-    # Verify paths exist
     if not Path(structure_dir).exists():
         raise ValueError(f"Structure directory not found: {structure_dir}")
     if not Path(foldseek_bin).exists():
