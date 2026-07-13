@@ -13,6 +13,7 @@ uv.lock
 # custom
 /data/scope40pdb-15k
 /data/scope40pdb
+/data/cath_pdb
 /models
 /alignResults
 data/scop/
@@ -26,3 +27,5 @@ pdb/
 
 .DS_Store
 TM_Vec_2_Preprint/
+core
+.ipynb_checkpoints/
