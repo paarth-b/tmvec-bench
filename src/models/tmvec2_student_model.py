@@ -16,7 +16,7 @@ AA_TO_IDX['<UNK>'] = UNK_TOKEN
 
 def encode_sequence(sequence, max_length=None):
     """Encode amino acid sequence to tensor."""
-    encoded = [AA_TO_IDX.get(aa, UNK_TOKEN) for aa in sequence]
+    encoded = [AA_TO_IDX.get(aa, UNK_TOKEN) for aa in sequence.upper()]
 
     if max_length:
         if len(encoded) > max_length:

@@ -18,7 +18,12 @@ set -e
 REPO_ROOT="/u/paarthbatra/git/tmvec-bench"
 cd "$REPO_ROOT"
 
+BENCHMARK_THREADS="${BENCHMARK_THREADS:-${SLURM_CPUS_PER_TASK:-4}}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-${BENCHMARK_THREADS}}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-${BENCHMARK_THREADS}}"
+
 echo "CPUs: $SLURM_CPUS_PER_TASK"
+echo "Benchmark threads: ${BENCHMARK_THREADS}"
 echo "GPU: $(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)"
 echo "Start: $(date)"
 echo ""
@@ -56,4 +61,4 @@ echo "Running Foldseek Model Time Benchmark..."
 echo "=========================================="
 uv run python -m src.time_benchmarks.foldseek_time_benchmark \
     --structure-dir data/pdb/cath-s100 \
-    --threads ${SLURM_CPUS_PER_TASK:-1} 
+    --threads ${BENCHMARK_THREADS}

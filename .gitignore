@@ -29,3 +29,5 @@ pdb/
 TM_Vec_2_Preprint/
 core
 .ipynb_checkpoints/
+*.gguf
+ref/

@@ -17,7 +17,8 @@ from pathlib import Path
 from Bio import SeqIO
 from huggingface_hub import hf_hub_download
 
-from src.model.tmvec_2_model import TMScorePredictor, TMVecConfig
+from src.time_benchmarks.benchmark_env import capture_benchmark_environment, write_json
+from src.models.tmvec_2_model import TMScorePredictor, TMVecConfig
 from lobster.model import LobsterPMLM
 
 
@@ -431,8 +432,13 @@ def main():
         "encoding_sizes": encoding_sizes,
         "database_sizes": database_sizes,
         "query_sizes": query_sizes,
+        "system_info_file": "system_info.json",
     }
     pd.Series(config).to_json(output_dir / "benchmark_config.json")
+    write_json(
+        output_dir / "system_info.json",
+        capture_benchmark_environment(requested_threads=None, accelerator=str(device)),
+    )
     
     total_benchmark_time = time.perf_counter() - start_time
     print(f"\n{'='*60}")
