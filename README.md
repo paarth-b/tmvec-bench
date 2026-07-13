@@ -4,11 +4,12 @@ Benchmarking library for TMVec-2 Suite, comparing to structure alignment methods
 
 ## Description
 
-This repo benchmarks four protein structure similarity methods against TM-Align scores:
+This repo benchmarks five protein structure similarity methods against TM-Align scores:
 - **Foldseek**: Fast structure comparison using 3Di sequences
 - **TM-Vec**: Neural network model for TM-score prediction from ProtT5-XL embeddings
 - **TM-Vec 2**: Optimized architecture using Lobster-24M foundation model
 - **TM-Vec 2s**: BiLSTM student model distilled from TM-Vec 2
+- **pLM-BLAST**: Local alignment of per-residue ProtT5 embeddings ([labstructbioinf/pLM-BLAST](https://github.com/labstructbioinf/pLM-BLAST))
 
 ## Installation
 
@@ -157,27 +158,46 @@ This downloads from ASTRAL/RCSB PDB.
 
 ## Running Benchmarks
 
-Using bash scripts in `scripts/` (recommended on clusters):
+Using bash scripts in `slurm/` (recommended on clusters):
 
 ```bash
 # This will run the benchmarks on the CATH S100 and SCOPe40 datasets, as well as the time benchmarks and generate the plots.
-bash scripts/tmvec2_student.sh
-bash scripts/tmvec2.sh
-bash scripts/tmvec1.sh
-bash scripts/foldseek.sh
-bash scripts/tmalign.sh
+bash slurm/tmvec2_student.sh
+bash slurm/tmvec2.sh
+bash slurm/tmvec1.sh
+bash slurm/foldseek.sh
+bash slurm/tmalign.sh
+bash slurm/plmblast.sh
 ```
 
-Alternatively, all benchmark code is in `src/benchmarks` and `src/time_benchmarks`. They can be run locally.
+### pLM-BLAST
+
+pLM-BLAST lives in a sibling repository. Clone it and expose the path:
 
 ```bash
-uv run python -m src.benchmarks.{model_file}
+git clone https://github.com/labstructbioinf/pLM-BLAST.git ../pLM-BLAST
+# Install its requirements in a dedicated venv (see pLM-BLAST README)
+export PLMBLAST_REPO=$(realpath ../pLM-BLAST)
+```
+
+The benchmark auto-detects `$PLMBLAST_REPO/benchmark/bin/python` if that venv exists,
+otherwise it falls back to the active interpreter.
+
+```bash
+uv run python -m src.accuracy_benchmarks.plmblast --dataset cath
+uv run python -m src.accuracy_benchmarks.plmblast --dataset scope40
+```
+
+Alternatively, all benchmark code is in `src/accuracy_benchmarks` and `src/time_benchmarks`. They can be run locally.
+
+```bash
+uv run python -m src.accuracy_benchmarks.{model_file}
 uv run python -m src.time_benchmarks.{time_benchmark_file}
 ```
 
 Example:
 ```bash
-uv run python -m src.benchmarks.tmvec1
+uv run python -m src.accuracy_benchmarks.tmvec1
 uv run python -m src.time_benchmarks.tmvec1_time_benchmark
 ```
 > **_NOTE:_**  TMAlign is a cpu-based script, and may take a long time (>10 Hours) to generate 500,000 pair scores. For convenience, TMAlign results already exist in the results/ folder.
@@ -196,23 +216,28 @@ All benchmarks generate CSV files in `results/` with the following format:
 
 ### Visualization
 
-To generate plots from results, follow readme instructions in the following:
-Generated plots are available in the plots subfolders.
+Generate plots from results:
 
 ```bash
-# CATH visualizations
-cd src/plotting/cath
+# Density scatter plots (predicted vs true TM-scores)
+python src/util/graphs.py tmvec2
+python src/util/graphs.py tmvec1
+python src/util/graphs.py tmvec2_student
+python src/util/graphs.py foldseek
 
-# SCOPe visualizations
-cd src/plotting/scope
+# ROC curves (homology detection at each classification level)
+python src/plotting/plot_roc.py --dataset cath
+python src/plotting/plot_roc.py --dataset scope40
 
-# Runtime benchmarks
-cd src/plotting/time
+# Merge all results into a single table for notebook analysis
+python -m src.plotting.merge_results --dataset cath
+python -m src.plotting.merge_results --dataset scope40
 ```
+
+Detailed plotting notebooks are in `src/plotting/{cath,scope,time}/plot.ipynb`.
 
 Plots are saved to `figures/` and include:
 - ROC curves (homology detection at different classification levels)
-- PR curves (precision-recall)
 - Density scatter plots (predicted vs. true TM-scores)
 - Runtime comparisons (encoding and query times)
 
