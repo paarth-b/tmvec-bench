@@ -5,27 +5,41 @@ CATH release 4.4.0 was used in this study. It is available for download at:
 
 - ftp://orengoftp.biochem.ucl.ac.uk/cath/releases/all-releases/v4_4_0/
 
-Download sequence data:
+The CATH domain classification file (`cath-domain-list-S100.txt`) and sequence
+file (`cath-domain-seqs-S100.fa`) are included in `data/fasta/`.
 
+The domain list used for benchmarking is `domains.txt` (10,000 domains).
+
+### Workflow (run from repo root)
+
+1. Generate ground truth classifications:
 ```bash
-wget -O cath-domain-seqs-S100.fa ftp://orengoftp.biochem.ucl.ac.uk/cath/releases/all-releases/v4_4_0/sequence-data/cath-domain-seqs-S100-v4_4_0.fa
+uv run python -m src.plotting.get_truth_cath
+```
+This produces `truth.tsv` in this directory.
+
+2. Run all accuracy benchmarks (see main README for commands).
+
+3. Merge results into a combined table:
+```bash
+uv run python -m src.plotting.merge_results --dataset cath
+```
+This produces `results.tsv` in this directory.
+
+4. Plot TM-score prediction accuracy:
+```bash
+uv run python -m src.plotting.plot_accuracy --dataset cath
+```
+This produces plots in `plots/` and `metrics.tsv`.
+
+5. Calculate and plot homology detection metrics:
+```bash
+uv run python -m src.plotting.calc_homology --dataset cath
+uv run python -m src.plotting.plot_homology --dataset cath
 ```
 
-Download classification data:
-
+For the "all pairs" variant:
 ```bash
-wget -O cath-domain-list-S100.txt ftp://orengoftp.biochem.ucl.ac.uk/cath/releases/all-releases/v4_4_0/cath-classification-data/cath-domain-list-S100-v4_4_0.txt
-wget -O cath-names.txt ftp://orengoftp.biochem.ucl.ac.uk/cath/releases/all-releases/v4_4_0/cath-classification-data/cath-names-v4_4_0.txt
+uv run python -m src.plotting.calc_homology_all --dataset cath
+uv run python -m src.plotting.plot_homology --dataset cath --suffix .all --metrics-dir src/plotting/cath/metrics_all
 ```
-
-Execute `get_truth_cath.py` to obtain a list of ground-truth matches per domain pair per classification unit (1 - same unit; 2 - otherwise). This will generate `truth.tsv`.
-
-Place the raw results in the `results` folder.
-
-Execute `merge_results.py` to combine the results into one table file `results.tsv`.
-
-Execute `plot_accuracy.py` to analyze TM-score prediction accuracy and generate plots.
-
-Execute `plot_homology.py` to analyze homology detection performance using shared protein domain pairs.
-
-Execute `plot_homology_all.py` to analyze homology detection performance using all  protein domain pairs.

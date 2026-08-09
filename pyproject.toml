@@ -9,12 +9,9 @@ dependencies = [
     "faiss-cpu",
     "huggingface-hub==0.36.0",
     "lightning",
-    "lbster @ git+https://github.com/prescient-design/lobster.git",
-    "loguru",
+    "lbster @ git+https://github.com/prescient-design/lobster.git@v0.0.16",
     "matplotlib",
     "pandas",
-    "protobuf",
-    "pyarrow",
     "scikit-learn",
     "scipy",
     "seaborn",
@@ -23,5 +20,9 @@ dependencies = [
     "torch",
     "tqdm",
     "transformers<4.45",
-    "wandb",
+    "scienceplots>=2.2.1",
+    "h5py>=3.16.0",
 ]
+
+[tool.uv]
+torch-backend = "cu128"
