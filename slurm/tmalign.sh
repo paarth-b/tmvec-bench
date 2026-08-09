@@ -48,13 +48,6 @@ echo "=========================================="
 
 echo ""
 echo "=========================================="
-echo "Generating density scatter plots for TM-align..."
-echo "=========================================="
-uv run python -m src.util.graphs tmalign
-echo "=========================================="
-
-echo ""
-echo "=========================================="
 echo "Running TM-align Model Time Benchmark..."
 echo "=========================================="
 uv run python -m src.time_benchmarks.tmalign_time_benchmark \

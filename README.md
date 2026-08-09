@@ -15,10 +15,28 @@ This repo benchmarks five protein structure similarity methods against TM-Align 
 
 ### 1. Clone Repository
 
+Clone with the supplementary submodule (includes pre-bundled datasets, binaries,
+and time benchmark results):
+
 ```bash
-git clone https://github.com/paarth-b/tmvec-bench.git
+git clone --recursive https://github.com/paarth-b/tmvec-bench.git
 cd tmvec-bench
 ```
+
+If you already cloned without `--recursive`, initialize the submodule:
+
+```bash
+git submodule update --init --recursive
+```
+
+The submodule (`tmvec_bench_supplementary/`) provides three symlinked directories:
+- `binaries/` — TMalign binary, student model checkpoint, config files
+- `data/` — CATH/SCOPe FASTA files, CATH PDB zip, classification data
+- `results/` — pre-computed time benchmark results
+
+Without the submodule, these directories will be empty symlinks. The benchmark
+and plotting code will still run once you download the required data manually
+(see Dataset Setup below).
 
 ### 2. Install Python Dependencies
 
@@ -89,8 +107,9 @@ Or download manually from [HuggingFace Hub](https://huggingface.co/scikit-bio/tm
 #### TM-Vec 2 Models
 
 ```bash
-# TM-Vec 2 (Lobster-based teacher model)
-huggingface-cli download scikit-bio/tmvec-2 --local-dir models/tmvec-2
+# TM-Vec 2 (Lobster-based teacher model) - auto-downloaded from HuggingFace
+# on first run via huggingface_hub. To pre-download:
+huggingface-cli download scikit-bio/tmvec-2
 
 # TM-Vec 2s (student model) - already provided in binaries/
 # File: binaries/tmvec2_student.pt
@@ -190,7 +209,7 @@ uv run python -m src.accuracy_benchmarks.tmalign --dataset cath
 uv run python -m src.accuracy_benchmarks.tmalign --dataset scope40
 ```
 
-> **_NOTE:_**  TM-align is a CPU-based script and may take a long time (>10 hours) to generate pairwise scores for 10,000 domains (49,995,000 pairs). For smaller runs, use `--max-sequences` or run on a subset.
+> **_NOTE:_**  TM-align is a CPU-based script and may take a long time (>10 hours) to generate pairwise scores for 10,000 domains (49,995,000 pairs). To run on a smaller subset, pass a shorter FASTA file with `--fasta`.
 
 ### pLM-BLAST
 
@@ -235,7 +254,10 @@ bash slurm/tmvec2.sh
 bash slurm/tmvec1.sh
 bash slurm/foldseek.sh
 bash slurm/tmalign.sh
+
+# pLM-BLAST requires a dataset argument:
 bash slurm/plmblast.sh cath
+bash slurm/plmblast.sh scope40
 ```
 
 > **_NOTE:_** Slurm scripts contain SBATCH directives for a specific cluster. Edit the `#SBATCH` lines (partition, account, etc.) to match your cluster configuration.
