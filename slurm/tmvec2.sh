@@ -14,8 +14,8 @@
 
 set -e
 
-# Get the repository root directory
-REPO_ROOT="/u/paarthbatra/git/tmvec-bench"
+# Get the repository root directory (parent of slurm directory)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "CPUs: $SLURM_CPUS_PER_TASK"

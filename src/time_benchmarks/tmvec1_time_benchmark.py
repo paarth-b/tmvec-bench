@@ -286,7 +286,7 @@ def run_query_benchmark(record_seqs, model_deep, model, tokenizer, device,
 
 def main():
     parser = argparse.ArgumentParser(description="TM-Vec 1 Time Benchmark")
-    parser.add_argument("--sequence-path", default="data/fasta/cath-domain-seqs.fa",
+    parser.add_argument("--sequence-path", default="data/fasta/cath-domain-seqs-S100.fa",
                         help="Path to FASTA file with sequences")
     parser.add_argument("--checkpoint", default="binaries/tm_vec_cath_model.ckpt",
                         help="Path to TM-Vec model checkpoint")

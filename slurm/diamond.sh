@@ -48,7 +48,7 @@ echo ""
 echo "=========================================="
 echo "Running Diamond Time Benchmark..."
 echo "=========================================="
-python src/time_benchmarks/diamond_time_benchmark.py \
+uv run python src/time_benchmarks/diamond_time_benchmark.py \
     --fasta data/fasta/cath-domain-seqs-S100.fa \
     --diamond-bin binaries/diamond \
     --threads ${BENCHMARK_THREADS}

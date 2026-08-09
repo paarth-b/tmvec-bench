@@ -19,7 +19,7 @@ echo ""
 echo "=========================================="
 echo "Running Foldseek CPU default Time Benchmark..."
 echo "=========================================="
-python3 src/time_benchmarks/foldseek_time_benchmark.py \
+uv run python src/time_benchmarks/foldseek_time_benchmark.py \
     --structure-dir data/pdb/cath-s100 \
     --threads ${BENCHMARK_THREADS} \
     --output-dir results/time_benchmarks/foldseek_cpu_default

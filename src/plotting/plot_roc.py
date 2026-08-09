@@ -68,7 +68,7 @@ def load_scores(dataset, method, suffix=""):
 
     # For e-values, convert to a "higher = more similar" score using -log10
     if not info["higher_is_similar"]:
-        values = scores.to_numpy(dtype=float)
+        values = scores.to_numpy(dtype=float).copy()
         values[values == 0] = np.nanmin(values[values > 0]) * 0.1
         scores = pd.Series(-np.log10(values), index=scores.index, name=method)
 
@@ -81,11 +81,15 @@ def load_truth(dataset):
     if not path.exists():
         raise FileNotFoundError(
             f"Ground truth not found: {path}\n"
-            f"Run the get_truth.py script first."
+            f"Run the get_truth script first:\n"
+            f"  python -m src.plotting.get_truth_{dataset}"
         )
     df = pd.read_table(path)
-    df["seq_pair"] = df["a"] + "," + df["b"]
-    df = df.set_index("seq_pair").drop(columns=["a", "b"])
+    if "seq_pair" not in df.columns:
+        # Legacy format with separate a, b columns
+        df["seq_pair"] = df["a"] + "," + df["b"]
+        df = df.drop(columns=["a", "b"])
+    df = df.set_index("seq_pair")
     return df
 
 

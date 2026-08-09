@@ -100,75 +100,97 @@ The configuration file `binaries/tm_vec_cath_model_params.json` is already inclu
 
 ## Dataset Setup
 
-### CATH S100 Fasta File
-
-Unzip `data/fasta/cath-domain-seqs.zip` to get `data/fasta/cath-domain-seqs.fa`.
-
-```bash
-unzip data/fasta/cath-domain-seqs.zip -d data/fasta
-```
-
 ### CATH S100 Dataset
 
-The benchmarks use the first 1,000 domains from CATH S100 (non-redundant at 100% sequence identity).
+The benchmarks use 10,000 non-redundant domains from CATH S100. The FASTA file is already provided at `data/fasta/cath-s100-unique-10k.fa`.
 
-The FASTA file is already provided at `data/cath-top1k.fa`. We provide a zip file of the first 1000 domains of CATH S100 for convenience, that can be unzipped to get the PDB structures.
+**PDB structures:** A zip file with 1,000 CATH S100 PDB structures is provided for convenience. For the full 10,000-domain benchmark, use the download script (below).
 
 ```bash
+# Option A: Use provided 1,000-structure subset (for quick testing)
 unzip data/cath-pdb.zip -d data/
+# Structures will be at data/pdb/cath-s100/
 ```
 
-Alternatively, if you choose to download structures for the 1000 domains from CATH Database:
-
 ```bash
-mkdir -p data/pdb/cath-s100
-
+# Option B: Download all 10,000 structures from CATH Database
 python src/util/download_structures.py \
-    --fasta data/cath-top1k.fa \
+    --fasta data/fasta/cath-s100-unique-10k.fa \
     --output-dir data/pdb/cath-s100 \
     --dataset cath
 ```
 
-This will download ~1000 PDB structures from RCSB PDB.
-
+Alternatively, use the Slurm batch script:
+```bash
+bash slurm/download_cath_10k.sh
+```
 
 ### SCOPe40 Dataset
 
-The benchmarks use 1,000 domains from SCOPe 2.01 clustered at 40% sequence identity.
+The benchmarks use 11,211 domains from SCOPe 2.01 clustered at 40% sequence identity. The FASTA file is already provided at `data/fasta/scop40.fasta`.
 
-The FASTA file is already provided at `data/fasta/scope40-1000.fa`. We provide a zip file of the first 1000 domains of SCOPe 2.01 for convenience hosted on Google Drive, that can be unzipped to get the PDB structures.
+**PDB structures:** Download the SCOPe40 PDB structures (hosted on Google Drive):
 
 ```bash
 wget "https://drive.usercontent.google.com/download?id=1HjtC7Dv-MZABO9wr5PYr5DPLZ6S642P6&export=download&confirm=t" -O data/scope40-pdb.zip
 unzip data/scope40-pdb.zip -d data/
+# Structures should be at data/pdb/scope40/
 ```
 
-Alternatively, if you choose to download structures for the 1000 domains from SCOPe Database:
-
+Alternatively, download structures from the SCOPe/ASTRAL database:
 ```bash
-mkdir -p data/scope40pdb
-
 python src/util/download_structures.py \
-    --fasta data/fasta/scope40-1000.fa \
-    --output-dir data/scope40pdb \
+    --fasta data/fasta/scop40.fasta \
+    --output-dir data/pdb/scope40 \
     --dataset scope40
 ```
 
-This downloads from ASTRAL/RCSB PDB.
+### CATH S100 Full Sequence File (optional)
+
+For time benchmarks that require the full CATH S100 sequence set, unzip the provided archive:
+
+```bash
+unzip data/fasta/cath-domain-seqs.zip -d data/fasta
+# Produces data/fasta/cath-domain-seqs.fa
+```
+
+The CATH domain classification file (`data/fasta/cath-domain-list-S100.txt`) and full sequence file (`data/fasta/cath-domain-seqs-S100.fa`) are already included.
 
 ## Running Benchmarks
 
-Using bash scripts in `slurm/` (recommended on clusters):
+### Accuracy Benchmarks
+
+All accuracy benchmarks write results to `results/` as CSV files with the format:
+
+| seq1_id | seq2_id | tm_score | evalue (Foldseek only) |
+|---------|---------|----------|------------------------|
+| 107lA00 | 108lA00 | 0.8523   | 1.2e-10               |
+
+Run individual benchmarks:
 
 ```bash
-# This will run the benchmarks on the CATH S100 and SCOPe40 datasets, as well as the time benchmarks and generate the plots.
-bash slurm/tmvec2_student.sh
-bash slurm/tmvec2.sh
-bash slurm/tmvec1.sh
-bash slurm/foldseek.sh
-bash slurm/tmalign.sh
-bash slurm/plmblast.sh
+# TM-Vec 2 (teacher model, Lobster-24M based)
+uv run python -m src.accuracy_benchmarks.tmvec2 --dataset cath
+uv run python -m src.accuracy_benchmarks.tmvec2 --dataset scope40
+
+# TM-Vec 2s (student model)
+uv run python -m src.accuracy_benchmarks.tmvec2_student --dataset cath
+uv run python -m src.accuracy_benchmarks.tmvec2_student --dataset scope40
+
+# TM-Vec (original ProtT5-based model)
+uv run python -m src.accuracy_benchmarks.tmvec1 --dataset cath
+uv run python -m src.accuracy_benchmarks.tmvec1 --dataset scope40
+
+# Foldseek (structure alignment)
+uv run python -m src.accuracy_benchmarks.foldseek --dataset cath
+uv run python -m src.accuracy_benchmarks.foldseek --dataset scope40
+
+# TM-align (ground truth, CPU-only, may take >10 hours for 10k domains)
+uv run python -m src.accuracy_benchmarks.tmalign --dataset cath
+uv run python -m src.accuracy_benchmarks.tmalign --dataset scope40
 ```
+
+> **_NOTE:_**  TM-align is a CPU-based script and may take a long time (>10 hours) to generate pairwise scores for 10,000 domains (49,995,000 pairs). For smaller runs, use `--max-sequences` or run on a subset.
 
 ### pLM-BLAST
 
@@ -188,67 +210,112 @@ uv run python -m src.accuracy_benchmarks.plmblast --dataset cath
 uv run python -m src.accuracy_benchmarks.plmblast --dataset scope40
 ```
 
-Alternatively, all benchmark code is in `src/accuracy_benchmarks` and `src/time_benchmarks`. They can be run locally.
+### Time Benchmarks
+
+Time benchmarks measure encoding and query throughput for each method:
 
 ```bash
-uv run python -m src.accuracy_benchmarks.{model_file}
-uv run python -m src.time_benchmarks.{time_benchmark_file}
-```
-
-Example:
-```bash
-uv run python -m src.accuracy_benchmarks.tmvec1
+uv run python -m src.time_benchmarks.tmvec2_time_benchmark
 uv run python -m src.time_benchmarks.tmvec1_time_benchmark
+uv run python -m src.time_benchmarks.student_time_benchmark
+uv run python -m src.time_benchmarks.foldseek_time_benchmark --structure-dir data/pdb/cath-s100
+uv run python -m src.time_benchmarks.tmalign_time_benchmark
+uv run python -m src.time_benchmarks.diamond_time_benchmark --fasta data/fasta/cath-domain-seqs-S100.fa
 ```
-> **_NOTE:_**  TMAlign is a cpu-based script, and may take a long time (>10 Hours) to generate 500,000 pair scores. For convenience, TMAlign results already exist in the results/ folder.
 
-## Output Files
+### Slurm Batch Scripts
 
-### Similarity Results
-
-All benchmarks generate CSV files in `results/` with the following format:
-
-| seq1_id | seq2_id | tm_score | evalue (Foldseek only) |
-|---------|---------|----------|------------------------|
-| 107lA00 | 108lA00 | 0.8523   | 1.2e-10               |
-| 107lA00 | 109lA00 | 0.7234   | 3.4e-08               |
-
-
-### Visualization
-
-Generate plots from results:
+For cluster environments, use the scripts in `slurm/`:
 
 ```bash
-# Density scatter plots (predicted vs true TM-scores)
-python src/util/graphs.py tmvec2
-python src/util/graphs.py tmvec1
-python src/util/graphs.py tmvec2_student
-python src/util/graphs.py foldseek
-
-# ROC curves (homology detection at each classification level)
-python src/plotting/plot_roc.py --dataset cath
-python src/plotting/plot_roc.py --dataset scope40
-
-# Merge all results into a single table for notebook analysis
-python -m src.plotting.merge_results --dataset cath
-python -m src.plotting.merge_results --dataset scope40
+# These run the benchmarks on both CATH and SCOPe40 datasets, generate plots,
+# and run time benchmarks.
+bash slurm/tmvec2_student.sh
+bash slurm/tmvec2.sh
+bash slurm/tmvec1.sh
+bash slurm/foldseek.sh
+bash slurm/tmalign.sh
+bash slurm/plmblast.sh cath
 ```
 
-Detailed plotting notebooks are in `src/plotting/{cath,scope,time}/plot.ipynb`.
+> **_NOTE:_** Slurm scripts contain SBATCH directives for a specific cluster. Edit the `#SBATCH` lines (partition, account, etc.) to match your cluster configuration.
 
-Plots are saved to `figures/` and include:
-- ROC curves (homology detection at different classification levels)
-- Density scatter plots (predicted vs. true TM-scores)
-- Runtime comparisons (encoding and query times)
+## Visualization
+
+### Density Scatter Plots
+
+Generate density scatter plots comparing predicted vs true TM-scores:
+
+```bash
+uv run python -m src.util.graphs tmvec2
+uv run python -m src.util.graphs tmvec1
+uv run python -m src.util.graphs tmvec2_student
+uv run python -m src.util.graphs foldseek
+```
+
+Plots are saved to `figures/{dataset}/{method}/density_scatter.png`.
+
+### ROC Curves (Homology Detection)
+
+```bash
+# Generate ground truth classification files first
+uv run python -m src.plotting.get_truth_cath
+uv run python -m src.plotting.get_truth_scope
+
+# Generate ROC curves
+uv run python -m src.plotting.plot_roc --dataset cath
+uv run python -m src.plotting.plot_roc --dataset scope40
+```
+
+Plots are saved to `figures/{dataset}/roc.png`.
+
+### Accuracy and Homology Analysis
+
+Merge all method results into a single table, then generate accuracy and homology plots:
+
+```bash
+# Merge results into a combined table
+uv run python -m src.plotting.merge_results --dataset cath
+uv run python -m src.plotting.merge_results --dataset scope40
+
+# Plot TM-score prediction accuracy (correlation, error, confusion matrices)
+uv run python -m src.plotting.plot_accuracy --dataset cath
+uv run python -m src.plotting.plot_accuracy --dataset scope40
+
+# Calculate homology detection metrics
+uv run python -m src.plotting.calc_homology --dataset cath
+uv run python -m src.plotting.calc_homology --dataset scope40
+
+# Plot homology detection metrics (PR curves, mean AP, ROC(n), hits@K)
+uv run python -m src.plotting.plot_homology --dataset cath
+uv run python -m src.plotting.plot_homology --dataset scope40
+```
+
+For the "all pairs" variant (including pairs not reported by all methods):
+
+```bash
+uv run python -m src.plotting.calc_homology_all --dataset cath
+uv run python -m src.plotting.plot_homology --dataset cath --suffix .all --metrics-dir src/plotting/cath/metrics_all
+```
+
+Plots are saved to `src/plotting/{cath,scope}/plots/`.
+
+### Runtime Plots
+
+```bash
+uv run python src/plotting/time/plot.py
+```
+
+Plots are saved to `src/plotting/time/plots/`.
 
 ## Validation of Published Results
 
 To validate the results in the ISMB 2026 paper:
 
-1. **Table 1 (Prediction Accuracy)**: Run all benchmarks on both CATH and SCOPe40, then compare the generated CSVs against TM-align ground truth using the plotting notebooks.
+1. **Table 1 (Prediction Accuracy)**: Run all benchmarks on both CATH and SCOPe40, then run `merge_results` + `plot_accuracy` to generate correlation, error, and confusion matrix plots.
 
-2. **Figure 4 (TM-score Prediction)**: Generate density scatter plots showing correlation between predicted and true TM-scores.
+2. **Figure 4 (TM-score Prediction)**: Generate density scatter plots using `src/util/graphs.py` showing correlation between predicted and true TM-scores.
 
-3. **Figure 5 (Homology Detection)**: Use the ground truth classification files to compute ROC/PR curves at different hierarchy levels (Class → Superfamily/Family).
+3. **Figure 5 (Homology Detection)**: Run `get_truth` + `plot_roc` to compute ROC/PR curves at different hierarchy levels (Class → Superfamily/Family).
 
-4. **Supplementary Tables (Runtime)**: Time benchmarks are in `src/time_benchmarks/`. Results should match the encoding/query time tables.
+4. **Supplementary Tables (Runtime)**: Time benchmarks are in `src/time_benchmarks/`. Run `src/plotting/time/plot.py` to generate runtime comparison plots.

@@ -1,3 +1,0 @@
-query_size,database_size,total_mean,total_std,n_pairs,num_runs,warmup_runs
-10,50,1.9086074847728014,0.0,500,1,0
-10,100,3.9914725814014673,0.0,1000,1,0

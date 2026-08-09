@@ -4,11 +4,22 @@ Foldseek Benchmark: Generate pairwise TM-score predictions for protein structure
 """
 
 from pathlib import Path
+import argparse
 import subprocess
 import pandas as pd
 import tempfile
-import sys
 import os
+
+DATASETS = {
+    "cath": {
+        "structure_dir": "data/pdb/cath-s100",
+        "output": "results/cath_foldseek_similarities.csv",
+    },
+    "scope40": {
+        "structure_dir": "data/pdb/scope40",
+        "output": "results/scope40_foldseek_similarities.csv",
+    },
+}
 
 
 def get_pdb_files(structure_dir):
@@ -107,36 +118,38 @@ def save_results(pairs, output_path):
 
 
 def main():
-    is_scope40 = len(sys.argv) > 1 and sys.argv[1] == "scope40"
+    parser = argparse.ArgumentParser(description="Foldseek benchmark")
+    parser.add_argument("--dataset", choices=DATASETS.keys(), default="cath",
+                        help="Dataset to use (cath or scope40)")
+    parser.add_argument("--structure-dir", default=None,
+                        help="PDB structure directory (overrides dataset default)")
+    parser.add_argument("--output", default=None, help="Output CSV path (overrides dataset default)")
+    parser.add_argument("--foldseek-bin", default="binaries/foldseek", help="Path to foldseek binary")
+    parser.add_argument("--threads", type=int, default=32, help="Number of CPU threads")
+    args = parser.parse_args()
 
-    if is_scope40:
-        structure_dir = "data/pdb/SCOPe40"
-        output = "/work/nvme/beut/paarthbatra/data/results/scope40_foldseek_similarities.csv"
-    else:
-        structure_dir = "data/pdb/CATH"
-        output = "/work/nvme/beut/paarthbatra/data/results/cath_foldseek_similarities.csv"
-
-    foldseek_bin = "binaries/foldseek"
-    threads = 32
+    config = DATASETS[args.dataset]
+    structure_dir = args.structure_dir or config["structure_dir"]
+    output = args.output or config["output"]
 
     print("=" * 80)
     print("Foldseek Benchmark")
-    print(f"Dataset: {'SCOPe40' if is_scope40 else 'CATH'}")
+    print(f"Dataset: {args.dataset.upper()}")
     print(f"Structure dir: {structure_dir}")
     print(f"Output: {output}")
-    print(f"Threads: {threads}")
+    print(f"Threads: {args.threads}")
     print("=" * 80)
 
     if not Path(structure_dir).exists():
         raise ValueError(f"Structure directory not found: {structure_dir}")
-    if not Path(foldseek_bin).exists():
-        raise ValueError(f"Foldseek binary not found: {foldseek_bin}")
+    if not Path(args.foldseek_bin).exists():
+        raise ValueError(f"Foldseek binary not found: {args.foldseek_bin}")
 
     pdb_files = get_pdb_files(structure_dir)
     if not pdb_files:
         raise ValueError(f"No structure files found in {structure_dir}")
 
-    df = run_foldseek(structure_dir, foldseek_bin, threads)
+    df = run_foldseek(structure_dir, args.foldseek_bin, args.threads)
     pairs = parse_results(df)
     save_results(pairs, output)
 

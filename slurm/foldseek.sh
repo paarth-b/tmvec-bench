@@ -14,8 +14,8 @@
 
 set -e
 
-# Get the repository root directory
-REPO_ROOT="/u/paarthbatra/git/tmvec-bench"
+# Get the repository root directory (parent of slurm directory)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 BENCHMARK_THREADS="${BENCHMARK_THREADS:-${SLURM_CPUS_PER_TASK:-4}}"
@@ -38,7 +38,7 @@ export HYDRA_FULL_ERROR=1
 echo "=========================================="
 echo "Running Foldseek predictions on full SCOPe40..."
 echo ""
-uv run python -m src.accuracy_benchmarks.foldseek scope40
+uv run python -m src.accuracy_benchmarks.foldseek --dataset scope40
 echo ""
 echo "=========================================="
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """TMvec-1: TM-score predictions for CATH and SCOPe."""
 
-import sys
+import argparse
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -9,6 +9,17 @@ from tqdm import tqdm
 from src.accuracy_benchmarks import cosine_similarity_matrix, save_pairwise_scores
 from src.models.tmvec_1_model import TransformerEncoderModule, TransformerEncoderModuleConfig
 from src.util.fasta import load_fasta
+
+DATASETS = {
+    "cath": {
+        "fasta": "data/fasta/cath-s100-unique-10k.fa",
+        "output": "results/cath_tmvec1_similarities.csv",
+    },
+    "scope40": {
+        "fasta": "data/fasta/scop40.fasta",
+        "output": "results/scope40_tmvec1_similarities.csv",
+    },
+}
 
 
 def generate_embeddings(sequences, batch_size=32, max_length=512, device='cuda'):
@@ -74,26 +85,29 @@ def transform_embeddings(base_embeddings, checkpoint_path, device):
 
 
 def main():
-    is_scope40 = len(sys.argv) > 1 and sys.argv[1] == "scope40"
+    parser = argparse.ArgumentParser(description="TMvec-1 TM-score prediction")
+    parser.add_argument("--dataset", choices=DATASETS.keys(), default="cath",
+                        help="Dataset to use (cath or scope40)")
+    parser.add_argument("--fasta", default=None, help="FASTA file path (overrides dataset default)")
+    parser.add_argument("--output", default=None, help="Output CSV path (overrides dataset default)")
+    parser.add_argument("--checkpoint", default="binaries/tm_vec_cath_model.ckpt",
+                        help="Path to TMvec-1 checkpoint")
+    parser.add_argument("--batch-size", type=int, default=16, help="Batch size for embedding generation")
+    parser.add_argument("--device", default=None, help="Device (cuda/cpu, auto-detects if not specified)")
+    args = parser.parse_args()
 
-    if is_scope40:
-        fasta = "data/fasta/scop40.fasta"
-        output = "/work/nvme/beut/paarthbatra/data/results/scope40_tmvec1_similarities.csv"
-    else:
-        fasta = "data/fasta/cath-s100-unique-10k.fa"
-        output = "/work/nvme/beut/paarthbatra/data/results/cath_tmvec1_similarities.csv"
-
-    checkpoint = "binaries/tm_vec_cath_model.ckpt"
-    batch_size = 16
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    config = DATASETS[args.dataset]
+    fasta = args.fasta or config["fasta"]
+    output = args.output or config["output"]
+    device = args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
 
     print(f"Device: {device}")
     print(f"FASTA: {fasta}")
     print(f"Output: {output}")
 
     seq_ids, sequences = load_fasta(fasta, None)
-    base_embeddings = generate_embeddings(sequences, batch_size, device=device)
-    tmvec_embeddings = transform_embeddings(base_embeddings, checkpoint, device)
+    base_embeddings = generate_embeddings(sequences, args.batch_size, device=device)
+    tmvec_embeddings = transform_embeddings(base_embeddings, args.checkpoint, device)
     tm_matrix = cosine_similarity_matrix(tmvec_embeddings)
     save_pairwise_scores(seq_ids, tm_matrix, output)
 

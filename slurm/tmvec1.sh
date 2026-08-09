@@ -14,7 +14,7 @@
 
 set -e
 
-REPO_ROOT="/u/paarthbatra/git/tmvec-bench"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "CPUs: $SLURM_CPUS_PER_TASK"
@@ -29,7 +29,7 @@ module load cuda-compat/13.0
 echo "=========================================="
 echo "Running TM-Vec 1 predictions on full SCOPe40..."
 echo ""
-uv run python -m src.accuracy_benchmarks.tmvec1 scope40
+uv run python -m src.accuracy_benchmarks.tmvec1 --dataset scope40
 echo ""
 echo "=========================================="
 

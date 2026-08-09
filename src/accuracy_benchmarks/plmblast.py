@@ -23,17 +23,17 @@ import pandas as pd
 DATASETS = {
     "cath": {
         "fasta": "data/fasta/cath-s100-unique-10k.fa",
-        "output": "/work/nvme/beut/paarthbatra/data/results/cath_plmblast_similarities.csv",
-        "emb_dir": "/work/nvme/beut/paarthbatra/data/plmblast_emb/cath",
+        "output": "results/cath_plmblast_similarities.csv",
+        "emb_dir": "data/plmblast_emb/cath",
     },
     "scope40": {
         "fasta": "data/fasta/scop40.fasta",
-        "output": "/work/nvme/beut/paarthbatra/data/results/scope40_plmblast_similarities.csv",
-        "emb_dir": "/work/nvme/beut/paarthbatra/data/plmblast_emb/scope40",
+        "output": "results/scope40_plmblast_similarities.csv",
+        "emb_dir": "data/plmblast_emb/scope40",
     },
 }
 
-DEFAULT_REPO = os.environ.get("PLMBLAST_REPO", "/u/paarthbatra/git/pLM-BLAST")
+DEFAULT_REPO = os.environ.get("PLMBLAST_REPO", "../pLM-BLAST")
 
 
 def resolve_python(repo):
@@ -104,7 +104,7 @@ def main():
     parser.add_argument("--output", help="Override final output CSV path")
     parser.add_argument("--emb-dir", help="Override embeddings directory")
     parser.add_argument("--plmblast-repo", default=DEFAULT_REPO,
-                        help="Path to pLM-BLAST clone (default: $PLMBLAST_REPO or /u/paarthbatra/git/pLM-BLAST)")
+                        help="Path to pLM-BLAST clone (default: $PLMBLAST_REPO or ../pLM-BLAST)")
     parser.add_argument("--python", default=None,
                         help="Python interpreter to invoke pLM-BLAST scripts with "
                              "(default: <repo>/benchmark/bin/python if present, else current interpreter)")

@@ -3,85 +3,102 @@
 Plot homology detection metrics by classification level and method.
 
 Input:
-    metrics/*.tsv and *.npy
+    src/plotting/{dataset_dir}/metrics/*.tsv and *.npy  (from calc_homology.py)
 
 Output:
-    plots/*.svg
+    src/plotting/{dataset_dir}/plots/*.svg
 
+Usage:
+    python -m src.plotting.plot_homology --dataset cath
+    python -m src.plotting.plot_homology --dataset scope40
 """
 
+import argparse
 from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import PrecisionRecallDisplay
 
-
 plt.rcParams['svg.fonttype'] = 'none'
 
-indir = 'metrics'
-outdir = 'plots'
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# classification levels (adjust as needed)
-levels = ['class', 'architecture', 'topology', 'superfamily']  # CATH
-# levels = ['class', 'fold', 'superfamily', 'family']  # SCOPe
-nl = len(levels)
+DATASET_DIRS = {
+    "cath": ("cath", ['class', 'architecture', 'topology', 'superfamily']),
+    "scope40": ("scope", ['class', 'fold', 'superfamily', 'family']),
+}
 
-# methods
-methods = ['tmvec1', 'tmvec2s', 'tmalign', 'foldseek']
+# methods and visual properties
+methods = ['tmvec1', 'tmvec2', 'tmvec2s', 'tmalign', 'foldseek']
+zorder = [4, 5, 3, 2, 1]
 
-# visual order of methods
-zorder = [3, 4, 2, 1]
-
-# color scheme of methods
 cmap = plt.get_cmap('tab10')
 palette = {
     'tmvec1':   cmap(0),  # blue
+    'tmvec2':   cmap(5),  # cyan
     'tmvec2s':  cmap(1),  # orange
     'tmalign':  cmap(2),  # green
     'foldseek': cmap(4),  # purple
+    'plmblast': cmap(6),  # pink
 }
 
-# figure width
 fw = 8
-
-# marker style
 margs = dict(marker='o', alpha=0.75, ms=5)
+npt = 5000
+ns = np.array([1, 5, 10])
+ks = np.array([1, 5, 10, 50, 100])
 
-# value formatting
+
 def _fmt_val(val):
     return '{:.3f}'.format(val).lstrip('0')
 
 
-# downsample precision-recall curve to this number of points
-npt = 5000
-
-# n-values for calculating ROC(n)
-ns = np.array([1, 5, 10])
-
-# k-values for calculating precision @ K and hits @ K
-ks = np.array([1, 5, 10, 50, 100])
-
-
 def main():
-    Path(outdir).mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(description="Plot homology detection metrics")
+    parser.add_argument("--dataset", choices=DATASET_DIRS.keys(), required=True)
+    parser.add_argument("--metrics-dir", default=None, help="Input metrics directory (auto-detected)")
+    parser.add_argument("--output-dir", default=None, help="Output plots directory (auto-detected)")
+    parser.add_argument("--suffix", default="", help="Suffix for output filenames (e.g. '.all')")
+    args = parser.parse_args()
+
+    dataset_dir, levels = DATASET_DIRS[args.dataset]
+    plot_dir = REPO_ROOT / "src" / "plotting" / dataset_dir
+    indir = Path(args.metrics_dir) if args.metrics_dir else plot_dir / "metrics"
+    outdir = Path(args.output_dir) if args.output_dir else plot_dir / "plots"
+    suffix = args.suffix
+    nl = len(levels)
+
+    outdir.mkdir(parents=True, exist_ok=True)
 
     # Read calculated metrics
-    dfs = {x: pd.read_table(f'{indir}/{x}.tsv', index_col=0) for x in levels}
+    dfs = {x: pd.read_table(indir / f'{x}.tsv', index_col=0) for x in levels}
+
+    # Filter to available methods (from first level with data)
+    first_valid = next((l for l in levels if 'ap' in dfs[l].columns), None)
+    if first_valid is None:
+        raise ValueError("No metrics found. Run calc_homology first.")
+    available = [m for m in methods if m in dfs[first_valid].index]
+    avail_zorder = [z for m, z in zip(methods, zorder) if m in available]
 
     # PR curves and AP
     fig, axes = plt.subplots(
         1, nl, figsize=(fw, 2.25), sharey=True, constrained_layout=True)
     for i, level in enumerate(levels):
         ax = axes[i]
+        if 'ap' not in dfs[level].columns:
+            ax.set_title(f"{level.capitalize()}\n(no data)")
+            continue
         aps = dfs[level]['ap']
-        for (method, z) in zip(methods, zorder):
-            precision, recall = np.load(f'{indir}/pr_{level}_{method}.npy').T
+        for (method, z) in zip(available, avail_zorder):
+            npy_path = indir / f'pr_{level}_{method}.npy'
+            if not npy_path.exists():
+                continue
+            precision, recall = np.load(npy_path).T
             step = max(1, len(precision) // npt)
             precision, recall = precision[::step], recall[::step]
             PrecisionRecallDisplay(precision, recall).plot(ax=ax, curve_kwargs=dict(
                 label=_fmt_val(aps.loc[method]), color=palette[method], zorder=z))
-            # or `ax.plot(recall, precision)`, but it will apply trapezoidal rule
             ax.set_aspect('auto')
         handles, labels = ax.get_legend_handles_labels()
         leg = ax.legend(handlelength=1, handletextpad=0.25)
@@ -92,23 +109,27 @@ def main():
         ax.set_xlabel('Recall')
         ax.set_ylabel('Precision' if i == 0 else None)
         ax.set_title(level.capitalize())
-    fig.savefig(f'{outdir}/pr_curve.svg')
+    fig.savefig(outdir / f'pr_curve{suffix}.svg')
 
     # Mean AP
     fig, axes = plt.subplots(1, nl, figsize=(fw, 1.5), constrained_layout=True)
     for i, level in enumerate(levels):
         ax = axes[i]
-        vals = dfs[level].loc[methods, 'mean_ap'].to_numpy()
-        max_val = vals.max()
-        ax.bar(methods, vals, color=[palette[x] for x in methods])
+        if 'mean_ap' not in dfs[level].columns:
+            ax.set_title(f"{level.capitalize()}\n(no data)")
+            continue
+        avail = [m for m in available if m in dfs[level].index]
+        vals = dfs[level].loc[avail, 'mean_ap'].to_numpy()
+        max_val = vals.max() if len(vals) > 0 else 1
+        ax.bar(avail, vals, color=[palette[x] for x in avail])
         ax.set_ylim(0, max_val * 1.20)
         for j, val in enumerate(vals):
             ax.text(j, val, _fmt_val(val), ha='center', va='bottom')
-        ax.set_xticks(range(len(methods)), [])
+        ax.set_xticks(range(len(avail)), [])
         ax.set_xlabel('Method')
         if i == 0:
             ax.set_ylabel('Mean AP')
-    fig.savefig(f'{outdir}/mean_ap.svg')
+    fig.savefig(outdir / f'mean_ap{suffix}.svg')
 
     # ROC(n)
     rocn_cols = [f'roc_{n}' for n in ns]
@@ -117,16 +138,21 @@ def main():
     for i, level in enumerate(levels):
         ax = axes[i]
         df = dfs[level]
-        for j, method in enumerate(methods):
-            offset = (j - 2) * 0.1
+        if not all(c in df.columns for c in rocn_cols):
+            ax.set_title(f"{level.capitalize()}\n(no data)")
+            continue
+        for j, method in enumerate(available):
+            if method not in df.index:
+                continue
+            offset = (j - len(available) / 2) * 0.1
             ax.plot(np.arange(len(ns)) + offset, df.loc[method, rocn_cols],
-                    color=palette[method], zorder=zorder[j], **margs)
+                    color=palette[method], zorder=avail_zorder[j], **margs)
         ax.set_xticks(rocn_ran, ns)
         ax.set_xmargin(0.1)
         ax.set_xlabel('n', fontstyle='italic')
         if i == 0:
             ax.set_ylabel(r'ROC ($\it{n}$)')
-    fig.savefig(f'{outdir}/rocn.svg')
+    fig.savefig(outdir / f'rocn{suffix}.svg')
 
     # Hits @ K
     hits_cols = [f'hits_at_{k}' for k in ks]
@@ -136,15 +162,22 @@ def main():
     for i, level in enumerate(levels):
         ax = axes[i]
         df = dfs[level]
-        for j, method in enumerate(methods):
-            offset = (j - 2) * 0.1
+        if not all(c in df.columns for c in hits_cols):
+            ax.set_title(f"{level.capitalize()}\n(no data)")
+            continue
+        for j, method in enumerate(available):
+            if method not in df.index:
+                continue
+            offset = (j - len(available) / 2) * 0.1
             ax.plot(np.arange(len(ks)) + offset, df.loc[method, hits_cols],
-                    color=palette[method], zorder=zorder[j], **margs)
+                    color=palette[method], zorder=avail_zorder[j], **margs)
         ax.set_xticks(hits_ran, ks)
         ax.set_xlabel('k', fontstyle='italic')
         if i == 0:
             ax.set_ylabel(r'Hits @ $\it{k}$')
-    fig.savefig(f'{outdir}/hitsk.svg')
+    fig.savefig(outdir / f'hitsk{suffix}.svg')
+
+    print(f"Saved homology plots to {outdir}")
 
 
 if __name__ == '__main__':

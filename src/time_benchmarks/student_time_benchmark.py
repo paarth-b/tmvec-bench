@@ -325,7 +325,7 @@ def run_warmup(model, device, num_sequences=100, max_length=600):
 
 def main():
     parser = argparse.ArgumentParser(description="TM-Vec 2 Student Model Time Benchmark")
-    parser.add_argument("--sequence-path", default="data/fasta/cath-domain-seqs.fa",
+    parser.add_argument("--sequence-path", default="data/fasta/cath-domain-seqs-S100.fa",
                         help="Path to FASTA file with sequences")
     parser.add_argument("--checkpoint", default="binaries/tmvec2_student.pt",
                         help="Path to student model checkpoint")

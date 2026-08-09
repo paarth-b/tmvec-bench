@@ -6,15 +6,19 @@ Note:
     All protein domain pairs are included in the analysis.
 
 Input:
-    results.tsv
+    src/plotting/{dataset_dir}/results.tsv  (from merge_results.py)
 
 Output:
-    metrics/counts.tsv: numbers of queries and pairs per level
-    metrics/{level}.tsv: performance metrics per method per level
-    metrics/*.npy: ROC and PR curves per method
+    src/plotting/{dataset_dir}/metrics_all/counts.tsv
+    src/plotting/{dataset_dir}/metrics_all/{level}.tsv
+    src/plotting/{dataset_dir}/metrics_all/*.npy
 
+Usage:
+    python -m src.plotting.calc_homology_all --dataset cath
+    python -m src.plotting.calc_homology_all --dataset scope40
 """
 
+import argparse
 from pathlib import Path
 import numpy as np
 import pandas as pd
@@ -22,13 +26,15 @@ from sklearn.metrics import (
     auc, roc_curve, precision_recall_curve, roc_auc_score, average_precision_score
 )
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Classification levels (from broad to narrow)
-levels = ['class', 'architecture', 'topology', 'superfamily']  # CATH
-# levels = ['class', 'fold', 'superfamily', 'family']  # SCOPe
+DATASET_DIRS = {
+    "cath": ("cath", ['class', 'architecture', 'topology', 'superfamily']),
+    "scope40": ("scope", ['class', 'fold', 'superfamily', 'family']),
+}
 
 # Methods to compare
-methods = ['tmvec1', 'tmvec2s', 'tmalign', 'foldseek']
+methods = ['tmvec1', 'tmvec2', 'tmvec2s', 'tmalign', 'foldseek']
 
 # n-values for calculating ROC(n)
 ns = np.array([1, 5, 10])
@@ -38,11 +44,35 @@ ks = np.array([1, 5, 10, 50, 100])
 
 
 def main():
-    Path(outdir).mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(description="Calculate homology metrics (all pairs)")
+    parser.add_argument("--dataset", choices=DATASET_DIRS.keys(), required=True)
+    parser.add_argument("--input", default=None, help="Input results.tsv (auto-detected)")
+    parser.add_argument("--output-dir", default=None, help="Output metrics directory (auto-detected)")
+    args = parser.parse_args()
+
+    dataset_dir, levels = DATASET_DIRS[args.dataset]
+    plot_dir = REPO_ROOT / "src" / "plotting" / dataset_dir
+    infile = Path(args.input) if args.input else plot_dir / "results.tsv"
+    global outdir
+    outdir = Path(args.output_dir) if args.output_dir else plot_dir / "metrics_all"
+
+    if not infile.exists():
+        raise FileNotFoundError(
+            f"Input file not found: {infile}\n"
+            f"Run merge_results first: python -m src.plotting.merge_results --dataset {args.dataset}"
+        )
+
+    outdir.mkdir(parents=True, exist_ok=True)
 
     # Read combined results
-    df = pd.read_table('results.tsv', index_col=0)
+    df = pd.read_table(infile, index_col=0)
     print('Total hit count', df.shape[0], sep=': ')
+
+    # Filter to available methods and levels
+    available_methods = [m for m in methods if m in df.columns]
+    available_levels = [l for l in levels if l in df.columns]
+    levels = available_levels
+    methods = available_methods
 
     # Separate seq1 (query) and seq2 (subject)
     # Note: seq1 and seq2 are always in lexicographical order.
@@ -177,16 +207,16 @@ def main():
             results[method] = result
 
         dfr = pd.DataFrame(results).T
-        dfr.to_csv(f'{level}.tsv', sep='\t', float_format='%.7g')
+        dfr.to_csv(outdir / f'{level}.tsv', sep='\t', float_format='%.7g')
 
     dfc = pd.DataFrame(counts)
-    dfc.to_csv('counts.tsv', sep='\t', index=False)
+    dfc.to_csv(outdir / 'counts.tsv', sep='\t', index=False)
 
 
 def save_curve(x, y, fname):
     """Save curve to file."""
     data = np.column_stack((x, y)).astype('float32').round(5)
-    np.save(f'{outdir}/{fname}.npy', data)
+    np.save(outdir / f'{fname}.npy', data)
 
 
 def ap(precision, recall):

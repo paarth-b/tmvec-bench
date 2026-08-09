@@ -369,7 +369,7 @@ def run_query_benchmark(record_seqs, lobster_model, tokenizer, tmvec_model,
 
 def main():
     parser = argparse.ArgumentParser(description="TM-Vec 2 Time Benchmark")
-    parser.add_argument("--sequence-path", default="data/fasta/cath-domain-seqs.fa",
+    parser.add_argument("--sequence-path", default="data/fasta/cath-domain-seqs-S100.fa",
                         help="Path to FASTA file with sequences")
     parser.add_argument("--output-dir", default=None,
                         help="Output directory (auto-generated if not specified)")

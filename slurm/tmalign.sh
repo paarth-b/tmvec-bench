@@ -21,41 +21,41 @@ export HYDRA_FULL_ERROR=1
 # CUSTOMIZE TO YOUR MACHINE: Load required software and activate environment
 # module load python/miniforge3_pytorch/2.7.0
 
-FASTA_FILE="$REPO_ROOT/data/fasta/scope40-1000.fa"
+FASTA_FILE="$REPO_ROOT/data/fasta/scop40.fasta"
 OUTPUT_FILE="$REPO_ROOT/results/scope40_tmalign_similarities.csv"
 echo "=========================================="
-echo "Running TM-align predictions on SCOPe40-1000..."
+echo "Running TM-align predictions on SCOPe40..."
 echo ""
 echo "Model: TM-align binaries/TMalign"
-echo "FASTA: ${FASTA_FILE} (1000 sequences)"
+echo "FASTA: ${FASTA_FILE}"
 echo "Output: ${OUTPUT_FILE}"
 echo ""
-python -m src.accuracy_benchmarks.tmalign --dataset scope40
+uv run python -m src.accuracy_benchmarks.tmalign --dataset scope40
 echo ""
 echo "=========================================="
 
-FASTA_FILE="$REPO_ROOT/data/cath-top1k.fa"
+FASTA_FILE="$REPO_ROOT/data/fasta/cath-s100-unique-10k.fa"
 OUTPUT_FILE="$REPO_ROOT/results/cath_tmalign_similarities.csv"
 echo "=========================================="
 echo "Running TM-align predictions on CATH ..."
 echo ""
 echo "Model: TM-align binaries/TMalign"
-echo "FASTA: ${FASTA_FILE} (1000 sequences)"
+echo "FASTA: ${FASTA_FILE}"
 echo "Output: ${OUTPUT_FILE}"
 echo ""
-python -m src.accuracy_benchmarks.tmalign --dataset cath
+uv run python -m src.accuracy_benchmarks.tmalign --dataset cath
 echo "=========================================="
 
 echo ""
 echo "=========================================="
 echo "Generating density scatter plots for TM-align..."
 echo "=========================================="
-python src/util/graphs.py tmalign
+uv run python -m src.util.graphs tmalign
 echo "=========================================="
 
 echo ""
 echo "=========================================="
 echo "Running TM-align Model Time Benchmark..."
 echo "=========================================="
-python -m src.time_benchmarks.tmalign_time_benchmark \
+uv run python -m src.time_benchmarks.tmalign_time_benchmark \
     --threads ${BENCHMARK_THREADS}

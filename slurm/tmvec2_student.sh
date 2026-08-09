@@ -14,8 +14,8 @@
 
 set -e
 
-# Get the repository root directory
-REPO_ROOT="/u/paarthbatra/git/tmvec-bench"
+# Get the repository root directory (parent of slurm directory)
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "CPUs: $SLURM_CPUS_PER_TASK"
@@ -32,7 +32,7 @@ module load cuda-compat/13.0
 echo "=========================================="
 echo "Running TM-Vec 2 Student predictions on full SCOPe40..."
 echo ""
-uv run python -m src.accuracy_benchmarks.tmvec2_student scope40
+uv run python -m src.accuracy_benchmarks.tmvec2_student --dataset scope40
 echo ""
 echo "=========================================="
 

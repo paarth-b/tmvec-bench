@@ -17,7 +17,7 @@ set -e
 DATASET="${1:?usage: sbatch slurm/plmblast.sh <scope40|cath> [cpc]}"
 CPC="${2:-90}"
 
-REPO_ROOT="/u/paarthbatra/git/tmvec-bench"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "Dataset: $DATASET"
@@ -32,7 +32,7 @@ export PYTHONUNBUFFERED=1
 
 # pLM-BLAST is a sibling repo with its own virtualenv; the benchmark script
 # auto-detects <repo>/benchmark/bin/python when PLMBLAST_REPO is set.
-export PLMBLAST_REPO="/u/paarthbatra/git/pLM-BLAST"
+export PLMBLAST_REPO="${PLMBLAST_REPO:-$(realpath ../pLM-BLAST)}"
 
 uv run python -u -m src.accuracy_benchmarks.plmblast \
     --dataset "$DATASET" \

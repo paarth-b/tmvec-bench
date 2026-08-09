@@ -22,8 +22,8 @@ echo ""
 echo "=========================================="
 echo "Running ProstT5 GPU Time Benchmark..."
 echo "=========================================="
-python src/time_benchmarks/foldseek_plm_time_benchmark.py \
-    --fasta data/fasta/cath-domain-seqs-S100-1k.fa \
+uv run python src/time_benchmarks/foldseek_plm_time_benchmark.py \
+    --fasta data/fasta/cath-domain-seqs-S100.fa \
     --threads ${BENCHMARK_THREADS} \
     --use-gpu \
     --output-dir results/time_benchmarks/prostt5_gpu

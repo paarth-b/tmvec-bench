@@ -30,7 +30,7 @@ echo ""
 echo "=========================================="
 echo "Running Foldseek GPU default Time Benchmark..."
 echo "=========================================="
-python src/time_benchmarks/foldseek_time_benchmark.py \
+uv run python src/time_benchmarks/foldseek_time_benchmark.py \
     --structure-dir data/pdb/cath-s100 \
     --threads ${BENCHMARK_THREADS} \
     --use-gpu \

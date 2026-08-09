@@ -1,0 +1,3 @@
+[submodule "tmvec_bench_supplementary"]
+	path = tmvec_bench_supplementary
+	url = https://github.com/paarth-b/tmvec_bench_supplement.git

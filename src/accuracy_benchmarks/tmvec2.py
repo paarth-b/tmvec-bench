@@ -105,10 +105,10 @@ def main():
     # Set dataset-specific defaults
     if args.dataset == 'scope40':
         fasta = args.fasta or "data/fasta/scop40.fasta"
-        output = args.output or "/work/nvme/beut/paarthbatra/data/results/scope40_tmvec2_similarities.csv"
+        output = args.output or "results/scope40_tmvec2_similarities.csv"
     else:
         fasta = args.fasta or "data/fasta/cath-s100-unique-10k.fa"
-        output = args.output or "/work/nvme/beut/paarthbatra/data/results/cath_tmvec2_similarities.csv"
+        output = args.output or "results/cath_tmvec2_similarities.csv"
 
     device = args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
 

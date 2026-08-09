@@ -79,14 +79,14 @@ def main():
 
     # Auto-detect or construct file paths (default to cath dataset)
     method_file = args.method_file or \
-        f'/work/nvme/beut/paarthbatra/data/results/cath_{args.method}_similarities.csv'
+        f'results/cath_{args.method}_similarities.csv'
 
     is_scope40 = 'scope40' in Path(method_file).name
     dataset_name = 'SCOPe40' if is_scope40 else 'CATH'
     dataset_prefix = 'scope40_' if is_scope40 else 'cath_'
 
     tmalign_file = args.tmalign or \
-        f'/work/nvme/beut/paarthbatra/data/results/{dataset_prefix}tmalign_similarities.csv'
+        f'results/{dataset_prefix}tmalign_similarities.csv'
 
     df_tmalign = pd.read_csv(tmalign_file)
     if 'tm_score' in df_tmalign.columns:

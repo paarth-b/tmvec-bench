@@ -7,20 +7,47 @@ SCOPe 40 data were downloaded from the Foldseek repo:
 
 - https://wwwuser.gwdguser.de/~compbiol/foldseek/
 
+The SCOPe 40 sequence file (`scop40.fasta`) is included in `data/fasta/`.
+
+The domain list used for benchmarking is `domains.txt` (11,211 domains).
+
+The SCOPe classification file (`dir.des.scope.2.01-stable.txt`) is auto-downloaded
+by `get_truth_scope.py` if not present in `data/fasta/`.
+
 Classification information was retrieved from:
 
 - https://scop.berkeley.edu/downloads/parse/dir.des.scope.2.01-stable.txt
 
-Execute `get_truth_scope.py` to obtain a list of ground-truth matches per domain pair per classification unit (1 - same unit; 2 - otherwise). This will generate `truth.tsv`.
+### Workflow (run from repo root)
 
-Place the raw results in the `results` folder.
+1. Generate ground truth classifications:
+```bash
+uv run python -m src.plotting.get_truth_scope
+```
+This produces `truth.tsv` in this directory.
 
-Execute `merge_results.py` to combine the results into one table file `results.tsv`.
+2. Run all accuracy benchmarks (see main README for commands).
 
-Execute `plot_accuracy.py` to analyze TM-score prediction accuracy and generate plots.
+3. Merge results into a combined table:
+```bash
+uv run python -m src.plotting.merge_results --dataset scope40
+```
+This produces `results.tsv` in this directory.
 
-Edit the following Python scripts to uncomment SCOPe levels and comment CATH levels.
+4. Plot TM-score prediction accuracy:
+```bash
+uv run python -m src.plotting.plot_accuracy --dataset scope40
+```
+This produces plots in `plots/` and `metrics.tsv`.
 
-Execute `plot_homology.py` to analyze homology detection performance using shared protein domain pairs.
+5. Calculate and plot homology detection metrics:
+```bash
+uv run python -m src.plotting.calc_homology --dataset scope40
+uv run python -m src.plotting.plot_homology --dataset scope40
+```
 
-Execute `plot_homology_all.py` to analyze homology detection performance using all  protein domain pairs.
+For the "all pairs" variant:
+```bash
+uv run python -m src.plotting.calc_homology_all --dataset scope40
+uv run python -m src.plotting.plot_homology --dataset scope40 --suffix .all --metrics-dir src/plotting/scope/metrics_all
+```

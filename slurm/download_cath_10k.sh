@@ -13,7 +13,7 @@
 
 set -e
 
-REPO_ROOT="/u/paarthbatra/git/tmvec-bench"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "Start: $(date)"

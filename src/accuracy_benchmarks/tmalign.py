@@ -18,13 +18,13 @@ from tqdm import tqdm
 DATASETS = {
     "cath": {
         "fasta": "data/fasta/cath-s100-unique-10k.fa",
-        "pdb_dir": "data/pdb/CATH",
-        "output": "/work/nvme/beut/paarthbatra/data/results/cath_tmalign_similarities.csv",
+        "pdb_dir": "data/pdb/cath-s100",
+        "output": "results/cath_tmalign_similarities.csv",
     },
     "scope40": {
         "fasta": "data/fasta/scop40.fasta",
-        "pdb_dir": "data/pdb/SCOPe40",
-        "output": "/work/nvme/beut/paarthbatra/data/results/scope40_tmalign_similarities.csv",
+        "pdb_dir": "data/pdb/scope40",
+        "output": "results/scope40_tmalign_similarities.csv",
     },
 }
 
